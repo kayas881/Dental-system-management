@@ -1,0 +1,165 @@
+/* Tooth Selector Styles */
+.tooth-selector {
+    background: #fff;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+/* Patient Context Header Styles */
+.patient-context-header .card {
+    background: linear-gradient(135deg, #f8f9ff 0%, #e3f2fd 100%);
+    border: 2px solid #2196F3;
+    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.1);
+}
+
+.patient-context-header .card-body {
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 6px;
+}
+
+.patient-context-header h6 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.patient-context-header .fs-5 {
+    color: #1976D2;
+    font-weight: 700;
+}
+
+.dental-chart {
+    max-width: 800px;
+    margin: 0 auto;
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 1.5rem;
+    border: 2px solid #e9ecef;
+}
+
+.jaw {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 2rem;
+    justify-content: center;
+}
+
+.jaw:last-child {
+    margin-bottom: 0;
+}
+
+.quadrant {
+    flex: 1;
+    max-width: 300px;
+}
+
+.quadrant-label {
+    text-align: center;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    color: #495057;
+    font-size: 0.9rem;
+}
+
+.teeth-row {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.tooth-btn {
+    width: 35px;
+    height: 35px;
+    border: 2px solid #dee2e6;
+    background: white;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: #495057;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tooth-btn:hover:not(:disabled) {
+    border-color: #007bff;
+    background: #e3f2fd;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,123,255,0.2);
+}
+
+.tooth-btn.selected {
+    background: #007bff;
+    border-color: #0056b3;
+    color: white;
+    box-shadow: 0 2px 8px rgba(0,123,255,0.3);
+}
+
+.tooth-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.selected-summary {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.quadrant-summary .quadrant-box {
+    background: white;
+    min-height: 60px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+}
+
+.quadrant-box .fw-bold {
+    color: #6c757d;
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 2px;
+    margin-bottom: 4px;
+}
+
+.text-input-mode textarea {
+    font-family: monospace;
+    font-size: 1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .dental-chart {
+        padding: 1rem;
+    }
+    
+    .jaw {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .tooth-btn {
+        width: 30px;
+        height: 30px;
+        font-size: 0.7rem;
+    }
+    
+    .teeth-row {
+        gap: 2px;
+    }
+}
+
+@media (max-width: 480px) {
+    .tooth-btn {
+        width: 25px;
+        height: 25px;
+        font-size: 0.6rem;
+    }
+    
+    .quadrant-label {
+        font-size: 0.8rem;
+    }
+}

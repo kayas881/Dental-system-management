@@ -1,0 +1,180 @@
+/* Professional Loading Spinner Styles */
+.loading-spinner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+}
+
+.spinner-centered {
+    min-height: 200px;
+}
+
+.professional-spinner {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.spinner-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    border-top-color: #2c5aa0;
+    animation: spin 2s linear infinite;
+}
+
+.spinner-small .spinner-ring {
+    width: 30px;
+    height: 30px;
+}
+
+.spinner-medium .spinner-ring {
+    width: 50px;
+    height: 50px;
+}
+
+.spinner-large .spinner-ring {
+    width: 70px;
+    height: 70px;
+}
+
+.spinner-ring:nth-child(1) {
+    animation-duration: 2s;
+    border-width: 3px;
+}
+
+.spinner-ring:nth-child(2) {
+    animation-duration: 3s;
+    animation-direction: reverse;
+    border-top-color: #3d6eb5;
+    border-width: 2px;
+}
+
+.spinner-ring:nth-child(3) {
+    animation-duration: 4s;
+    border-top-color: rgba(44, 90, 160, 0.3);
+    border-width: 1px;
+}
+
+.spinner-logo {
+    position: relative;
+    z-index: 2;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.spinner-small .spinner-logo-img {
+    width: 16px;
+    height: 16px;
+}
+
+.spinner-medium .spinner-logo-img {
+    width: 24px;
+    height: 24px;
+}
+
+.spinner-large .spinner-logo-img {
+    width: 32px;
+    height: 32px;
+}
+
+.spinner-logo-img {
+    border-radius: 4px;
+    object-fit: contain;
+}
+
+.spinner-message {
+    color: #2c5aa0;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+    animation: fadeInOut 2s ease-in-out infinite;
+}
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 0.8;
+    }
+}
+
+@keyframes fadeInOut {
+    0%, 100% {
+        opacity: 0.7;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .loading-overlay {
+        background: rgba(0, 0, 0, 0.9);
+    }
+    
+    .spinner-message {
+        color: #e2e8f0;
+    }
+    
+    .spinner-ring {
+        border-top-color: #63b3ed;
+    }
+    
+    .spinner-ring:nth-child(2) {
+        border-top-color: #90cdf4;
+    }
+    
+    .spinner-ring:nth-child(3) {
+        border-top-color: rgba(99, 179, 237, 0.3);
+    }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+    .spinner-ring,
+    .spinner-logo,
+    .spinner-message {
+        animation: none;
+    }
+    
+    .professional-spinner::after {
+        content: "Loading...";
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        margin-top: 10px;
+        color: #2c5aa0;
+        font-size: 14px;
+    }
+}

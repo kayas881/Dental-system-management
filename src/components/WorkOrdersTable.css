@@ -1,0 +1,264 @@
+/* Work Orders Table Responsive Styles */
+
+.work-orders-container {
+    width: 100%;
+}
+
+/* Enhanced Card Styling with Expansion States */
+@media (max-width: 991.98px) {
+    .work-orders-container .card {
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+    }
+    
+    .work-orders-container .card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+        transform: translateY(-1px);
+    }
+    
+    /* Expanded card styling */
+    .work-orders-container .card.expanded {
+        border-color: #007bff;
+        box-shadow: 0 4px 16px rgba(0,123,255,0.2) !important;
+    }
+    
+    .card-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        transition: background-color 0.2s ease;
+    }
+    
+    .card-header:hover {
+        background-color: #e9ecef;
+    }
+    
+    .card-header.expanded {
+        background-color: #e3f2fd;
+        border-bottom-color: #007bff;
+    }
+    
+    /* Smooth card body expansion */
+    .card-body {
+        transition: all 0.3s ease;
+    }
+    
+    .btn-group .btn-sm {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        transition: all 0.2s ease;
+    }
+    
+    /* Expand/collapse icon animation */
+    .expand-icon {
+        transition: transform 0.3s ease;
+    }
+    
+    .expand-icon.expanded {
+        transform: rotate(180deg);
+    }
+}
+
+/* Mobile Card View Improvements */
+@media (max-width: 991.98px) {
+    .work-orders-container .card {
+        border-radius: 8px;
+        transition: box-shadow 0.2s ease;
+    }
+    
+    .work-orders-container .card:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
+    }
+    
+    .card-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .btn-group .btn-sm {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+}
+
+/* Desktop Table Improvements */
+@media (min-width: 992px) {
+    .work-orders-container table {
+        font-size: 0.9rem;
+    }
+    
+    .work-orders-container .table th {
+        background-color: #343a40;
+        color: white;
+        font-weight: 600;
+        text-align: center;
+        vertical-align: middle;
+        border: none;
+        font-size: 0.85rem;
+    }
+    
+    .work-orders-container .table td {
+        vertical-align: middle;
+        text-align: center;
+        border-color: #dee2e6;
+        transition: all 0.2s ease;
+    }
+    
+    /* Enhanced row hover and expanded states */
+    .work-orders-container .table tbody tr {
+        transition: all 0.2s ease;
+    }
+    
+    .work-orders-container .table tbody tr:hover {
+        background-color: #f8f9fa;
+        transform: scale(1.01);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    /* Expanded row styling */
+    .work-orders-container .table tbody tr.expanded {
+        background-color: #e3f2fd;
+        border-left: 4px solid #007bff;
+    }
+    
+    .work-orders-container .table tbody tr.expanded:hover {
+        background-color: #e1f5fe;
+    }
+    
+    /* Expand button styling */
+    .expand-btn {
+        background: none;
+        border: none;
+        color: #007bff;
+        cursor: pointer;
+        padding: 0.25rem;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+    }
+    
+    .expand-btn:hover {
+        background-color: #e3f2fd;
+        color: #0056b3;
+    }
+    
+    .expand-btn .expand-icon {
+        transition: transform 0.3s ease;
+    }
+    
+    .expand-btn .expand-icon.expanded {
+        transform: rotate(180deg);
+    }
+}
+
+/* Badge improvements */
+.badge-sm {
+    font-size: 0.6rem;
+    padding: 0.2rem 0.4rem;
+}
+
+/* Compact action buttons */
+.btn-group-sm .btn {
+    min-width: auto;
+}
+
+.btn-group-sm .btn[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    z-index: 1000;
+    background: #333;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 4px;
+}
+
+/* Responsive spacing */
+.work-orders-container .d-lg-none .card-body {
+    padding: 0.75rem;
+}
+
+.work-orders-container .d-lg-none .btn-group .btn {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8rem;
+}
+
+/* Table responsiveness on smaller screens */
+@media (max-width: 1199.98px) {
+    .work-orders-container .d-none.d-lg-block th,
+    .work-orders-container .d-none.d-lg-block td {
+        padding: 0.5rem 0.25rem;
+        font-size: 0.8rem;
+    }
+    
+    .work-orders-container .d-none.d-lg-block .btn-group-sm .btn {
+        padding: 0.2rem 0.4rem;
+        font-size: 0.7rem;
+    }
+}
+
+/* Additional Polish and Accessibility */
+
+/* Focus states for better accessibility */
+.work-orders-container .card-header:focus-within,
+.work-orders-container .expand-btn:focus {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+}
+
+/* Success feedback animation */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.work-orders-container .btn:active,
+.work-orders-container .form-check-input:checked {
+    animation: pulse 0.2s ease;
+}
+
+/* Loading state for async operations */
+.work-orders-container .btn[disabled] {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Enhanced tooltips and feedback */
+.work-orders-container [title]:hover::after {
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Responsive text adjustments */
+@media (max-width: 576px) {
+    .work-orders-container .card-header .small {
+        font-size: 0.7rem;
+    }
+    
+    .work-orders-container .badge {
+        font-size: 0.6rem;
+    }
+}
+
+/* Print styles (optional) */
+@media print {
+    .work-orders-container .btn,
+    .work-orders-container .form-check-input,
+    .work-orders-container .expand-btn {
+        display: none;
+    }
+    
+    .work-orders-container .card,
+    .work-orders-container .table tbody tr {
+        page-break-inside: avoid;
+    }
+}

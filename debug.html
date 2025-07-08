@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quick Supabase User Profile Debug</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Supabase Debug Tool</h1>
+    <p>Check the browser console for detailed logs</p>
+    
+    <script>
+        // Your Supabase credentials
+        const supabaseUrl = 'https://fnmayjhhrsgzhnbvmwes.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZubWF5amhocnNnemhuYnZtd2VzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyNjc4MjEsImV4cCI6MjA2Njg0MzgyMX0.21q3nC8IFO5RyAQ7iNfpj20dlRMwKdbN3j0jv7ejvic';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        
+        async function debugUserProfile() {
+            console.log('=== DEBUGGING USER PROFILE ===');
+            
+            try {
+                // Check user_profiles table for kayas@mail.com
+                const { data: profiles, error } = await supabase
+                    .from('user_profiles')
+                    .select('*')
+                    .eq('email', 'kayas@mail.com');
+                
+                console.log('Profiles for kayas@mail.com:', profiles);
+                if (error) console.error('Error:', error);
+                
+                // Check all profiles
+                const { data: allProfiles, error: allError } = await supabase
+                    .from('user_profiles')
+                    .select('*');
+                
+                console.log('All profiles:', allProfiles);
+                if (allError) console.error('All profiles error:', allError);
+                
+                // Test login
+                console.log('Testing login...');
+                const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+                    email: 'kayas@mail.com',
+                    password: 'your-password-here' // Replace with your actual password
+                });
+                
+                if (loginError) {
+                    console.error('Login error:', loginError);
+                } else {
+                    console.log('Login successful:', loginData);
+                    
+                    // Now check profile again with the authenticated user
+                    const { data: authProfileById, error: authError1 } = await supabase
+                        .from('user_profiles')
+                        .select('*')
+                        .eq('user_id', loginData.user.id);
+                    
+                    console.log('Profile by user_id after login:', authProfileById);
+                    if (authError1) console.error('Auth profile error:', authError1);
+                }
+                
+            } catch (err) {
+                console.error('Debug error:', err);
+            }
+        }
+        
+        // Run the debug function
+        debugUserProfile();
+    </script>
+</body>
+</html>
