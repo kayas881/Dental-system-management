@@ -979,6 +979,49 @@ const getBillWorkOrders = async (billId) => {
     }
 };
 
+// Update work order amount - admin only
+const updateWorkOrderAmount = async (id, amount) => {
+    try {
+        const userId = await authService.getUserId();
+        if (!userId) {
+            throw new Error('User not authenticated');
+        }
+
+        // Check if user is admin
+        const userRole = authService.getUserRole();
+        if (userRole !== 'ADMIN' && userRole !== 'admin') {
+            throw new Error('Access denied. Only administrators can update work order amounts.');
+        }
+
+        // Validate amount
+        const parsedAmount = parseFloat(amount);
+        if (isNaN(parsedAmount) || parsedAmount <= 0) {
+            throw new Error('Invalid amount. Amount must be a positive number.');
+        }
+
+        const { data, error } = await supabase
+            .from('work_orders')
+            .update({ 
+                amount: parsedAmount,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Error updating work order amount:', error);
+            throw error;
+        }
+        
+        console.log('Work order amount updated successfully:', data);
+        return { data };
+    } catch (error) {
+        console.error('Update work order amount error:', error);
+        return { error: error.message || error };
+    }
+};
+
 export const dentalLabService = {
     // Work Orders
     createWorkOrder,
@@ -1006,6 +1049,7 @@ export const dentalLabService = {
     getWorkOrdersByBillId: getBillWorkOrders, // Alias for getBillWorkOrders
     getBillsByDateRange,
     getBillsStats,
+    updateWorkOrderAmount,
 
     // Validation Helpers
     validatePatientToothSelection,

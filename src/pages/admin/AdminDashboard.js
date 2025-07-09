@@ -422,7 +422,7 @@ const AdminDashboard = () => {
 
                         {/* Admin Actions */}
                         <div className="row">
-                            <div className="col-lg-6 col-md-6">
+                            <div className="col-lg-4 col-md-6">
                                 <div className="card admin-action-card">
                                     <div className="card-header">
                                         <h5>💰 Bills Management</h5>
@@ -448,7 +448,29 @@ const AdminDashboard = () => {
                                 </div>
                             </div>
                             
-                            <div className="col-lg-6 col-md-6">
+                            <div className="col-lg-4 col-md-6">
+                                <div className="card admin-action-card">
+                                    <div className="card-header">
+                                        <h5>📊 Monthly Billing</h5>
+                                    </div>
+                                    <div className="card-body">
+                                        <p>Monthly consolidated billing system - price all orders for a doctor by month.</p>
+                                        <div className="d-grid gap-2">
+                                            <button 
+                                                className="btn btn-info" 
+                                                onClick={() => navigate('/admin/monthly-billing')}
+                                            >
+                                                📊 Monthly Bills
+                                            </button>
+                                            <div className="small text-muted">
+                                                End-of-month billing workflow
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className="col-lg-4 col-md-6">
                                 <div className="card admin-action-card">
                                     <div className="card-header">
                                         <h5>👥 User Management</h5>

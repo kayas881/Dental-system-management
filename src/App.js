@@ -10,6 +10,7 @@ import UserManagementPage from './pages/admin/UserManagementPage';
 import AnalyticsPage from './pages/admin/AnalyticsPage';
 import AuditLogPage from './pages/admin/AuditLogPage';
 import SystemMonitorPage from './pages/admin/SystemMonitorPage';
+import MonthlyBillingPage from './pages/admin/MonthlyBillingPage';
 
 // Staff pages
 import StaffDashboard from './pages/staff/StaffDashboard';
@@ -159,6 +160,15 @@ function App() {
     <AdminPrivateRoute>
       <ProfessionalLayout>
         <ItemizedBillPricingPage /> 
+      </ProfessionalLayout>
+    </AdminPrivateRoute>
+    }>
+    </Route>
+
+    <Route path='/admin/monthly-billing' element={
+    <AdminPrivateRoute>
+      <ProfessionalLayout>
+        <MonthlyBillingPage /> 
       </ProfessionalLayout>
     </AdminPrivateRoute>
     }>
