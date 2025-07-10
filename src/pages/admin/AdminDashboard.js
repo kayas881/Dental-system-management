@@ -16,10 +16,10 @@ const AdminDashboard = () => {
         monthlyRevenue: 0
     });
     const [realtimeStats, setRealtimeStats] = useState({
-        todayWorkOrders: 0,
-        todayRevenue: 0,
-        pendingApprovals: 0,
-        activeUsers: 0
+        currentMonthOrders: 0,
+        currentMonthRevenue: 0,
+        unprocessedOrders: 0,
+        totalDoctors: 0
     });
     const [notifications, setNotifications] = useState([]);
     const [showNotifications, setShowNotifications] = useState(false);
@@ -148,30 +148,55 @@ const AdminDashboard = () => {
 
     const loadRealtimeStats = async () => {
         try {
-            const today = new Date().toISOString().split('T')[0];
+            // Get monthly bills stats from history
+            const monthlyBillsStatsResponse = await dentalLabService.getMonthlyBillsStats();
+            let monthlyStats = {
+                currentMonthRevenue: 0,
+                currentMonthBills: 0,
+                totalCompletedBills: 0
+            };
             
-            // Get today's work orders
+            if (monthlyBillsStatsResponse.data) {
+                monthlyStats = monthlyBillsStatsResponse.data;
+            }
+
+            const currentDate = new Date();
+            const currentMonth = currentDate.getMonth();
+            const currentYear = currentDate.getFullYear();
+            
+            // Get work orders for current month
             const workOrdersResponse = await dentalLabService.getAllWorkOrders();
-            const todayOrders = workOrdersResponse.data?.filter(order => 
-                order.order_date === today
+            const currentMonthOrders = workOrdersResponse.data?.filter(order => {
+                const orderDate = new Date(order.completion_date || order.created_at);
+                return orderDate.getMonth() === currentMonth && 
+                       orderDate.getFullYear() === currentYear;
+            }).length || 0;
+
+            // Get unprocessed orders (without amounts)
+            const unprocessedOrders = workOrdersResponse.data?.filter(order => 
+                !order.amount || order.amount === 0
             ).length || 0;
 
-            // Get today's revenue
-            const billsResponse = await dentalLabService.getAllBills();
-            const todayRevenue = billsResponse.data?.filter(bill => 
-                bill.bill_date === today && bill.amount
-            ).reduce((sum, bill) => sum + parseFloat(bill.amount || 0), 0) || 0;
-
-            // Get pending approvals (bills without amounts)
-            const pendingApprovals = billsResponse.data?.filter(bill => 
-                !bill.amount || bill.amount === 0
-            ).length || 0;
+            // Get unique doctors count
+            const uniqueDoctors = new Set();
+            workOrdersResponse.data?.forEach(order => {
+                if (order.doctor_name) {
+                    // Normalize doctor name for counting
+                    const normalizedName = order.doctor_name
+                        .replace(/^(dr\.?|doctor)\s+/i, '')
+                        .trim()
+                        .toLowerCase();
+                    if (normalizedName) {
+                        uniqueDoctors.add(normalizedName);
+                    }
+                }
+            });
 
             setRealtimeStats({
-                todayWorkOrders: todayOrders,
-                todayRevenue: todayRevenue,
-                pendingApprovals: pendingApprovals,
-                activeUsers: stats.totalUsers // Could be enhanced with actual active users
+                currentMonthOrders: currentMonthOrders,
+                currentMonthRevenue: monthlyStats.currentMonthRevenue, // From completed bills
+                unprocessedOrders: unprocessedOrders,
+                totalDoctors: uniqueDoctors.size
             });
         } catch (error) {
             console.error('Error loading realtime stats:', error);
@@ -186,15 +211,15 @@ const AdminDashboard = () => {
             const newNotifications = [];
 
             if (billsResponse.data) {
-                // Bills needing pricing
-                const unpricedBills = billsResponse.data.filter(bill => !bill.amount || bill.amount === 0);
-                if (unpricedBills.length > 0) {
+                // Orders needing pricing
+                const unpricedOrders = workOrdersResponse.data?.filter(order => !order.amount || order.amount === 0) || [];
+                if (unpricedOrders.length > 0) {
                     newNotifications.push({
-                        id: 'unpriced-bills',
+                        id: 'unpriced-orders',
                         type: 'warning',
-                        title: 'Bills Need Pricing',
-                        message: `${unpricedBills.length} bills are waiting for price approval`,
-                        action: () => navigate('/bills-management'),
+                        title: 'Work Orders Need Pricing',
+                        message: `${unpricedOrders.length} work orders are waiting for price assignment`,
+                        action: () => navigate('/admin/monthly-billing'),
                         timestamp: new Date()
                     });
                 }
@@ -362,17 +387,17 @@ const AdminDashboard = () => {
                             </div>
                         </div>
 
-                        {/* Real-time Statistics Cards */}
+                        {/* Monthly Billing Statistics Cards */}
                         <div className="row mb-4">
                             <div className="col-md-3">
                                 <div className="card text-white bg-primary admin-card">
                                     <div className="card-header d-flex justify-content-between">
-                                        <span>Today's Work Orders</span>
+                                        <span>This Month's Orders</span>
                                         <span>📊</span>
                                     </div>
                                     <div className="card-body">
-                                        <h2 className="card-title">{realtimeStats.todayWorkOrders}</h2>
-                                        <p className="card-text">New orders today</p>
+                                        <h2 className="card-title">{realtimeStats.currentMonthOrders}</h2>
+                                        <p className="card-text">Work orders this month</p>
                                         <small className="opacity-75">Total: {stats.totalWorkOrders}</small>
                                     </div>
                                 </div>
@@ -380,27 +405,27 @@ const AdminDashboard = () => {
                             <div className="col-md-3">
                                 <div className="card text-white bg-success admin-card">
                                     <div className="card-header d-flex justify-content-between">
-                                        <span>Today's Revenue</span>
+                                        <span>Monthly Revenue</span>
                                         <span>💰</span>
                                     </div>
                                     <div className="card-body">
-                                        <h2 className="card-title">${realtimeStats.todayRevenue.toFixed(2)}</h2>
-                                        <p className="card-text">Revenue today</p>
-                                        <small className="opacity-75">Monthly: ${stats.monthlyRevenue.toFixed(2)}</small>
+                                        <h2 className="card-title">₹{realtimeStats.currentMonthRevenue.toFixed(2)}</h2>
+                                        <p className="card-text">Revenue this month</p>
+                                        <small className="opacity-75">From completed bills</small>
                                     </div>
                                 </div>
                             </div>
                             <div className="col-md-3">
                                 <div className="card text-white bg-warning admin-card">
                                     <div className="card-header d-flex justify-content-between">
-                                        <span>Pending Approvals</span>
+                                        <span>Unpriced Orders</span>
                                         <span>⏳</span>
                                     </div>
                                     <div className="card-body">
-                                        <h2 className="card-title">{realtimeStats.pendingApprovals}</h2>
+                                        <h2 className="card-title">{realtimeStats.unprocessedOrders}</h2>
                                         <p className="card-text">Need pricing</p>
                                         <small className="opacity-75">
-                                            {realtimeStats.pendingApprovals > 0 ? '🚨 Action needed' : '✅ All updated'}
+                                            {realtimeStats.unprocessedOrders > 0 ? '🚨 Action needed' : '✅ All priced'}
                                         </small>
                                     </div>
                                 </div>
@@ -408,13 +433,13 @@ const AdminDashboard = () => {
                             <div className="col-md-3">
                                 <div className="card text-white bg-info admin-card">
                                     <div className="card-header d-flex justify-content-between">
-                                        <span>Total Users</span>
-                                        <span>👥</span>
+                                        <span>Active Doctors</span>
+                                        <span>�‍⚕️</span>
                                     </div>
                                     <div className="card-body">
-                                        <h2 className="card-title">{stats.totalUsers}</h2>
-                                        <p className="card-text">System users</p>
-                                        <small className="opacity-75">{stats.totalStaff} staff • {stats.totalAdmins} admins</small>
+                                        <h2 className="card-title">{realtimeStats.totalDoctors}</h2>
+                                        <p className="card-text">Doctors in system</p>
+                                        <small className="opacity-75">Total unique doctors</small>
                                     </div>
                                 </div>
                             </div>
@@ -436,10 +461,10 @@ const AdminDashboard = () => {
                                             >
                                                 📊 Manage Bills & Pricing
                                             </button>
-                                            {realtimeStats.pendingApprovals > 0 && (
+                                            {realtimeStats.unprocessedOrders > 0 && (
                                                 <div className="alert alert-warning mb-0">
                                                     <small>
-                                                        🚨 {realtimeStats.pendingApprovals} bills need immediate pricing
+                                                        🚨 {realtimeStats.unprocessedOrders} orders need immediate pricing
                                                     </small>
                                                 </div>
                                             )}

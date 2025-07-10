@@ -1022,6 +1022,144 @@ const updateWorkOrderAmount = async (id, amount) => {
     }
 };
 
+// Monthly Bills History Management
+const saveMonthlyBillHistory = async (billData) => {
+    try {
+        console.log('Saving monthly bill history:', billData);
+        
+        const userId = await authService.getUserId();
+        const userEmail = authService.getUserEmail();
+        
+        // Extract month and year
+        const [year, month] = billData.month.split('-');
+        const monthNames = [
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+        const monthName = monthNames[parseInt(month) - 1];
+        
+        const historyRecord = {
+            doctor_name: billData.doctor_name,
+            billing_month: billData.month,
+            billing_year: parseInt(year),
+            billing_month_name: monthName,
+            work_orders_count: billData.work_orders.length,
+            total_amount: billData.total_amount,
+            work_order_ids: billData.work_orders.map(order => order.id),
+            generated_by: userEmail || 'admin',
+            bill_data: billData // Store complete data for regeneration
+        };
+        
+        // Insert or update the record
+        const { data, error } = await supabase
+            .from('monthly_bills_history')
+            .upsert(historyRecord, { 
+                onConflict: 'doctor_name,billing_month',
+                returning: 'minimal' 
+            });
+        
+        if (error) {
+            console.error('Error saving monthly bill history:', error);
+            throw error;
+        }
+        
+        console.log('Monthly bill history saved successfully');
+        return { data, error: null };
+    } catch (error) {
+        console.error('Error in saveMonthlyBillHistory:', error);
+        return { data: null, error: error.message };
+    }
+};
+
+const getMonthlyBillsHistory = async () => {
+    try {
+        const { data, error } = await supabase
+            .from('monthly_bills_history')
+            .select('*')
+            .order('generated_at', { ascending: false });
+        
+        if (error) {
+            console.error('Error fetching monthly bills history:', error);
+            throw error;
+        }
+        
+        return { data, error: null };
+    } catch (error) {
+        console.error('Error in getMonthlyBillsHistory:', error);
+        return { data: null, error: error.message };
+    }
+};
+
+const getMonthlyBillById = async (billId) => {
+    try {
+        const { data, error } = await supabase
+            .from('monthly_bills_history')
+            .select('*')
+            .eq('id', billId)
+            .single();
+        
+        if (error) {
+            console.error('Error fetching monthly bill:', error);
+            throw error;
+        }
+        
+        return { data, error: null };
+    } catch (error) {
+        console.error('Error in getMonthlyBillById:', error);
+        return { data: null, error: error.message };
+    }
+};
+
+const regenerateMonthlyBill = async (billId) => {
+    try {
+        const { data, error } = await supabase
+            .from('monthly_bills_history')
+            .select('bill_data')
+            .eq('id', billId)
+            .single();
+        
+        if (error) {
+            console.error('Error fetching bill data for regeneration:', error);
+            throw error;
+        }
+        
+        return { data: data.bill_data, error: null };
+    } catch (error) {
+        console.error('Error in regenerateMonthlyBill:', error);
+        return { data: null, error: error.message };
+    }
+};
+
+const getMonthlyBillsStats = async () => {
+    try {
+        const { data, error } = await supabase
+            .from('monthly_bills_history')
+            .select('billing_month, total_amount, work_orders_count');
+        
+        if (error) {
+            console.error('Error fetching monthly bills stats:', error);
+            throw error;
+        }
+        
+        // Calculate stats
+        const currentMonth = new Date().toISOString().slice(0, 7);
+        const currentMonthBills = data.filter(bill => bill.billing_month === currentMonth);
+        
+        const stats = {
+            totalCompletedBills: data.length,
+            currentMonthBills: currentMonthBills.length,
+            currentMonthRevenue: currentMonthBills.reduce((sum, bill) => sum + parseFloat(bill.total_amount || 0), 0),
+            totalRevenue: data.reduce((sum, bill) => sum + parseFloat(bill.total_amount || 0), 0),
+            totalOrdersBilled: data.reduce((sum, bill) => sum + parseInt(bill.work_orders_count || 0), 0)
+        };
+        
+        return { data: stats, error: null };
+    } catch (error) {
+        console.error('Error in getMonthlyBillsStats:', error);
+        return { data: null, error: error.message };
+    }
+};
+
 export const dentalLabService = {
     // Work Orders
     createWorkOrder,
@@ -1050,6 +1188,144 @@ export const dentalLabService = {
     getBillsByDateRange,
     getBillsStats,
     updateWorkOrderAmount,
+
+    // Monthly Bills History Management
+    saveMonthlyBillHistory: async (billData) => {
+        try {
+            console.log('Saving monthly bill history:', billData);
+            
+            const userId = await authService.getUserId();
+            const userEmail = authService.getUserEmail();
+            
+            // Extract month and year
+            const [year, month] = billData.month.split('-');
+            const monthNames = [
+                'January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'
+            ];
+            const monthName = monthNames[parseInt(month) - 1];
+            
+            const historyRecord = {
+                doctor_name: billData.doctor_name,
+                billing_month: billData.month,
+                billing_year: parseInt(year),
+                billing_month_name: monthName,
+                work_orders_count: billData.work_orders.length,
+                total_amount: billData.total_amount,
+                work_order_ids: billData.work_orders.map(order => order.id),
+                generated_by: userEmail || 'admin',
+                bill_data: billData // Store complete data for regeneration
+            };
+            
+            // Insert or update the record
+            const { data, error } = await supabase
+                .from('monthly_bills_history')
+                .upsert(historyRecord, { 
+                    onConflict: 'doctor_name,billing_month',
+                    returning: 'minimal' 
+                });
+            
+            if (error) {
+                console.error('Error saving monthly bill history:', error);
+                throw error;
+            }
+            
+            console.log('Monthly bill history saved successfully');
+            return { data, error: null };
+        } catch (error) {
+            console.error('Error in saveMonthlyBillHistory:', error);
+            return { data: null, error: error.message };
+        }
+    },
+
+    getMonthlyBillsHistory: async () => {
+        try {
+            const { data, error } = await supabase
+                .from('monthly_bills_history')
+                .select('*')
+                .order('generated_at', { ascending: false });
+            
+            if (error) {
+                console.error('Error fetching monthly bills history:', error);
+                throw error;
+            }
+            
+            return { data, error: null };
+        } catch (error) {
+            console.error('Error in getMonthlyBillsHistory:', error);
+            return { data: null, error: error.message };
+        }
+    },
+
+    getMonthlyBillById: async (billId) => {
+        try {
+            const { data, error } = await supabase
+                .from('monthly_bills_history')
+                .select('*')
+                .eq('id', billId)
+                .single();
+            
+            if (error) {
+                console.error('Error fetching monthly bill:', error);
+                throw error;
+            }
+            
+            return { data, error: null };
+        } catch (error) {
+            console.error('Error in getMonthlyBillById:', error);
+            return { data: null, error: error.message };
+        }
+    },
+
+    regenerateMonthlyBill: async (billId) => {
+        try {
+            const { data, error } = await supabase
+                .from('monthly_bills_history')
+                .select('bill_data')
+                .eq('id', billId)
+                .single();
+            
+            if (error) {
+                console.error('Error fetching bill data for regeneration:', error);
+                throw error;
+            }
+            
+            return { data: data.bill_data, error: null };
+        } catch (error) {
+            console.error('Error in regenerateMonthlyBill:', error);
+            return { data: null, error: error.message };
+        }
+    },
+
+    getMonthlyBillsStats: async () => {
+        try {
+            const { data, error } = await supabase
+                .from('monthly_bills_history')
+                .select('billing_month, total_amount, work_orders_count');
+            
+            if (error) {
+                console.error('Error fetching monthly bills stats:', error);
+                throw error;
+            }
+            
+            // Calculate stats
+            const currentMonth = new Date().toISOString().slice(0, 7);
+            const currentMonthBills = data.filter(bill => bill.billing_month === currentMonth);
+            
+            const stats = {
+                totalCompletedBills: data.length,
+                currentMonthBills: currentMonthBills.length,
+                currentMonthRevenue: currentMonthBills.reduce((sum, bill) => sum + parseFloat(bill.total_amount || 0), 0),
+                totalRevenue: data.reduce((sum, bill) => sum + parseFloat(bill.total_amount || 0), 0),
+                totalOrdersBilled: data.reduce((sum, bill) => sum + parseInt(bill.work_orders_count || 0), 0)
+            };
+            
+            return { data: stats, error: null };
+        } catch (error) {
+            console.error('Error in getMonthlyBillsStats:', error);
+            return { data: null, error: error.message };
+        }
+    },
 
     // Validation Helpers
     validatePatientToothSelection,

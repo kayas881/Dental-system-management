@@ -14,6 +14,7 @@ const MonthlyBillingPage = () => {
     const [pricing, setPricing] = useState({}); // { workOrderId: price }
     const [totalAmount, setTotalAmount] = useState(0);
     const [isAdmin, setIsAdmin] = useState(false);
+    const [billsHistory, setBillsHistory] = useState([]);
     
     const navigate = useNavigate();
 
@@ -176,6 +177,7 @@ const MonthlyBillingPage = () => {
         
         checkUserRole();
         loadDoctors();
+        loadBillsHistory();
     }, [navigate]);
 
     const loadDoctors = async () => {
@@ -206,6 +208,21 @@ const MonthlyBillingPage = () => {
             }
         } catch (error) {
             console.error('Error loading doctors:', error);
+        }
+    };
+
+    const loadBillsHistory = async () => {
+        try {
+            const response = await dentalLabService.getMonthlyBillsHistory();
+            if (response.data) {
+                setBillsHistory(response.data);
+            } else {
+                console.warn('No bills history data returned:', response.error);
+                setBillsHistory([]);
+            }
+        } catch (error) {
+            console.error('Error loading bills history:', error);
+            setBillsHistory([]);
         }
     };
 
@@ -315,9 +332,20 @@ const MonthlyBillingPage = () => {
                 generated_date: new Date().toISOString().split('T')[0]
             };
 
+            // Save to history before printing
+            const saveResult = await dentalLabService.saveMonthlyBillHistory(billData);
+            if (saveResult.error) {
+                console.warn('Could not save to history:', saveResult.error);
+                // Continue with printing even if history save fails
+            } else {
+                // Refresh history after successful save
+                loadBillsHistory();
+            }
+
             // Generate and print consolidated bill
             await printConsolidatedBill(billData);
-            setMessage('Monthly bill printed successfully');
+            
+            setMessage('Monthly bill printed and saved to history successfully');
         } catch (error) {
             setMessage('Error printing monthly bill: ' + error.message);
         }
@@ -380,17 +408,17 @@ const MonthlyBillingPage = () => {
             const quadrants = groupTeethByQuadrants(toothNumbers);
             
             return `
-                <div style="display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; width: 45px; height: 30px; border: 1px solid #333; font-size: 6px; font-family: monospace; margin: 0 auto;">
-                    <div style="border: 1px solid #666; padding: 0; background-color: ${quadrants.Q2.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 5px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; width: 38px; height: 24px; border: 1px solid #333; font-size: 5px; font-family: monospace; margin: 0 auto;">
+                    <div style="border: 1px solid #666; padding: 0; background-color: ${quadrants.Q2.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 4px;">
                         ${quadrants.Q2.length > 0 ? quadrants.Q2.map(tooth => tooth.toString().slice(-1)).join('') : ''}
                     </div>
-                    <div style="border: 1px solid #666; padding: 0; background-color: ${quadrants.Q1.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 5px;">
+                    <div style="border: 1px solid #666; padding: 0; background-color: ${quadrants.Q1.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 4px;">
                         ${quadrants.Q1.length > 0 ? quadrants.Q1.map(tooth => tooth.toString().slice(-1)).join('') : ''}
                     </div>
-                    <div style="border: 1px solid #666; padding: 0; background-color: ${quadrants.Q3.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 5px;">
+                    <div style="border: 1px solid #666; padding: 0; background-color: ${quadrants.Q3.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 4px;">
                         ${quadrants.Q3.length > 0 ? quadrants.Q3.map(tooth => tooth.toString().slice(-1)).join('') : ''}
                     </div>
-                    <div style="border: 1px solid #666; padding: 0; background-color: ${quadrants.Q4.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 5px;">
+                    <div style="border: 1px solid #666; padding: 0; background-color: ${quadrants.Q4.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 4px;">
                         ${quadrants.Q4.length > 0 ? quadrants.Q4.map(tooth => tooth.toString().slice(-1)).join('') : ''}
                     </div>
                 </div>
@@ -408,46 +436,299 @@ const MonthlyBillingPage = () => {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        * { box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; margin: 0; padding: 10px; font-size: 10px; line-height: 1.1; }
-        .header { text-align: center; margin-bottom: 15px; border-bottom: 2px solid #0066cc; padding-bottom: 10px; }
-        .header-content { display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 8px; }
-        .logo { width: 60px; height: 60px; object-fit: contain; flex-shrink: 0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            padding: 12px; 
+            font-size: 11px; 
+            line-height: 1.2; 
+            color: #333;
+            background: white;
+        }
+        .header { 
+            text-align: center; 
+            margin-bottom: 18px; 
+            border-bottom: 3px solid #0066cc; 
+            padding-bottom: 12px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 8px 8px 0 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header-content { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 18px; 
+            margin-bottom: 10px; 
+            padding: 10px;
+        }
+        .logo { 
+            width: 65px; 
+            height: 65px; 
+            object-fit: contain; 
+            flex-shrink: 0;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0,102,204,0.3);
+        }
         .company-info { text-align: center; }
-        .company-name { font-size: 20px; font-weight: bold; color: #0066cc; margin-bottom: 5px; letter-spacing: 1px; }
-        .company-subtitle { font-size: 14px; color: #666; font-weight: 500; margin-bottom: 8px; }
-        .bill-title { font-size: 16px; font-weight: bold; color: #333; margin-top: 8px; }
-        .doctor-info { margin-bottom: 12px; font-size: 10px; background-color: #f8f9fa; padding: 8px; border-radius: 5px; }
-        .doctor-info strong { font-size: 11px; color: #0066cc; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 9px; }
-        th, td { border: 1px solid #ddd; padding: 2px; text-align: left; vertical-align: middle; }
-        th { background-color: #f2f2f2; font-weight: bold; font-size: 8px; color: #333; }
-        .total-row { background-color: #e6f3ff; font-weight: bold; font-size: 10px; }
-        .amount { text-align: right; }
-        .footer { margin-top: 12px; text-align: center; font-size: 8px; color: #666; border-top: 1px solid #ddd; padding-top: 8px; }
-        .serial-col { width: 6%; }
-        .patient-col { width: 10%; }
-        .product-col { width: 12%; }
-        .shade-col { width: 6%; }
-        .tooth-col { width: 12%; }
-        .date-col { width: 8%; }
-        .amount-col { width: 8%; }
+        .company-name { 
+            font-size: 22px; 
+            font-weight: bold; 
+            color: #0066cc; 
+            margin-bottom: 6px; 
+            letter-spacing: 1.2px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+        .company-subtitle { 
+            font-size: 15px; 
+            color: #555; 
+            font-weight: 600; 
+            margin-bottom: 10px;
+            font-style: italic;
+        }
+        .bill-title { 
+            font-size: 18px; 
+            font-weight: bold; 
+            color: #333; 
+            margin-top: 10px;
+            padding: 6px 12px;
+            background: #0066cc;
+            color: white;
+            border-radius: 20px;
+            display: inline-block;
+            box-shadow: 0 2px 4px rgba(0,102,204,0.3);
+        }
+        .doctor-info { 
+            margin-bottom: 15px; 
+            font-size: 11px; 
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 12px; 
+            border-radius: 8px;
+            border-left: 4px solid #0066cc;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .doctor-info strong { 
+            font-size: 12px; 
+            color: #0066cc; 
+            font-weight: 600;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            align-items: center;
+        }
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-bottom: 10px; 
+            font-size: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th, td { 
+            border: 1px solid #ddd; 
+            padding: 3px 4px; 
+            text-align: left; 
+            vertical-align: middle;
+            word-wrap: break-word;
+        }
+        th { 
+            background: linear-gradient(135deg, #0066cc 0%, #004499 100%);
+            color: white;
+            font-weight: bold; 
+            font-size: 9px;
+            text-align: center;
+            letter-spacing: 0.5px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+        tbody tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        tbody tr:hover {
+            background-color: #e9ecef;
+        }
+        .total-row { 
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            font-weight: bold; 
+            font-size: 11px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+        .amount { 
+            text-align: right; 
+            font-weight: 600;
+        }
+        .footer { 
+            margin-top: 15px; 
+            text-align: center; 
+            font-size: 9px; 
+            color: #666; 
+            border-top: 2px solid #0066cc; 
+            padding-top: 10px;
+            background: #f8f9fa;
+            border-radius: 0 0 8px 8px;
+        }
+        .serial-col { width: 8%; }
+        .patient-col { width: 18%; }
+        .product-col { width: 20%; }
+        .shade-col { width: 10%; }
+        .tooth-col { width: 15%; }
+        .date-col { width: 12%; }
+        .amount-col { width: 12%; }
+        
+        /* Enhanced quadrant styling */
+        .quadrant-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+        }
+        
         @media print {
-            * { box-sizing: border-box; }
-            body { margin: 0; padding: 3mm; font-size: 8px; line-height: 1.0; }
-            .header { margin-bottom: 10px; padding-bottom: 8px; }
-            .header-content { gap: 10px; margin-bottom: 5px; }
-            .logo { width: 50px; height: 50px; flex-shrink: 0; }
-            .company-info { text-align: center; }
-            .company-name { font-size: 18px; }
-            .company-subtitle { font-size: 12px; }
-            .bill-title { font-size: 14px; }
-            .doctor-info { margin-bottom: 8px; padding: 6px; }
-            table { font-size: 7px; margin-bottom: 4px; }
-            th, td { padding: 1px; font-size: 6px; }
-            .total-row { font-size: 7px; }
-            tr { page-break-inside: avoid; height: 20px; }
-            .footer { margin-top: 8px; padding-top: 6px; }
+            @page {
+                size: A4;
+                margin: 6mm 5mm 6mm 5mm;
+            }
+            * { 
+                box-sizing: border-box; 
+                -webkit-print-color-adjust: exact;
+                color-adjust: exact;
+            }
+            body { 
+                margin: 0; 
+                padding: 0; 
+                font-size: 7px; 
+                line-height: 1.0;
+                background: white !important;
+            }
+            .header { 
+                margin-bottom: 4mm; 
+                padding-bottom: 3mm;
+                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+                border-radius: 3mm 3mm 0 0;
+                box-shadow: 0 0.8mm 1.5mm rgba(0,0,0,0.1);
+                page-break-inside: avoid;
+            }
+            .header-content { 
+                gap: 6mm; 
+                margin-bottom: 2mm; 
+                padding: 2mm;
+            }
+            .logo { 
+                width: 12mm; 
+                height: 12mm; 
+                border-radius: 50%;
+                box-shadow: 0 1mm 3mm rgba(0,102,204,0.3);
+            }
+            .company-name { 
+                font-size: 14px; 
+                letter-spacing: 0.8px;
+                text-shadow: 0.5px 0.5px 1px rgba(0,0,0,0.1);
+            }
+            .company-subtitle { 
+                font-size: 10px; 
+                margin-bottom: 2mm;
+            }
+            .bill-title { 
+                font-size: 12px; 
+                margin-top: 2mm;
+                padding: 2mm 4mm;
+                border-radius: 6mm;
+                background: #0066cc !important;
+                color: white !important;
+                box-shadow: 0 1mm 2mm rgba(0,102,204,0.3);
+            }
+            .doctor-info { 
+                margin-bottom: 3mm; 
+                padding: 2mm; 
+                font-size: 7px;
+                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+                border-left: 1.5mm solid #0066cc;
+                border-radius: 1.5mm;
+                box-shadow: 0 0.8mm 1.5mm rgba(0,0,0,0.1);
+                page-break-inside: avoid;
+            }
+            .doctor-info strong { 
+                font-size: 8px; 
+                color: #0066cc !important;
+            }
+            .info-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr 1fr;
+                gap: 3mm;
+            }
+            table { 
+                font-size: 5.5px; 
+                margin-bottom: 1.5mm;
+                box-shadow: 0 0.8mm 2mm rgba(0,0,0,0.1);
+                border-radius: 1.5mm;
+                overflow: hidden;
+                page-break-inside: auto;
+            }
+            th, td { 
+                padding: 0.3mm 0.8mm; 
+                font-size: 5.5px;
+                border: 0.2mm solid #ddd;
+                line-height: 1.0;
+                vertical-align: middle;
+            }
+            th { 
+                background: linear-gradient(135deg, #0066cc 0%, #004499 100%) !important;
+                color: white !important;
+                font-size: 5.5px;
+                font-weight: bold;
+                text-align: center;
+                letter-spacing: 0.2px;
+                text-shadow: 0.3px 0.3px 0.8px rgba(0,0,0,0.3);
+                page-break-inside: avoid;
+                page-break-after: avoid;
+            }
+            tbody tr {
+                page-break-inside: avoid;
+                height: 3.2mm;
+                min-height: 3.2mm;
+                max-height: 3.2mm;
+            }
+            tbody tr:nth-child(even) {
+                background-color: #f8f9fa !important;
+            }
+            .total-row { 
+                background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+                color: white !important;
+                font-size: 7px;
+                font-weight: bold;
+                text-shadow: 0.5px 0.5px 1px rgba(0,0,0,0.3);
+                page-break-inside: avoid;
+                page-break-before: avoid;
+            }
+            .footer { 
+                margin-top: 3mm; 
+                padding-top: 2mm;
+                font-size: 5.5px;
+                background: #f8f9fa !important;
+                border-top: 0.8mm solid #0066cc;
+                border-radius: 0 0 1.5mm 1.5mm;
+                page-break-inside: avoid;
+            }
+            .serial-col { width: 6%; min-width: 6%; max-width: 6%; }
+            .patient-col { width: 16%; min-width: 16%; max-width: 16%; }
+            .product-col { width: 18%; min-width: 18%; max-width: 18%; }
+            .shade-col { width: 8%; min-width: 8%; max-width: 8%; }
+            .tooth-col { width: 14%; min-width: 14%; max-width: 14%; }
+            .date-col { width: 10%; min-width: 10%; max-width: 10%; }
+            .amount-col { width: 10%; min-width: 10%; max-width: 10%; }
+            
+            /* Optimized quadrant display for print */
+            .quadrant-container {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 3mm;
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -519,6 +800,23 @@ const MonthlyBillingPage = () => {
                 }, 500);
             };
         });
+    };
+
+    const regenerateBill = async (billId) => {
+        try {
+            setLoading(true);
+            const response = await dentalLabService.regenerateMonthlyBill(billId);
+            if (response.data) {
+                await printConsolidatedBill(response.data);
+                setMessage('Bill regenerated and printed successfully');
+            } else {
+                setMessage('Error regenerating bill: ' + response.error);
+            }
+        } catch (error) {
+            setMessage('Error regenerating bill: ' + error.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     if (!isAdmin) {
@@ -679,6 +977,54 @@ const MonthlyBillingPage = () => {
                                     No work orders found for {selectedDoctor} in {new Date(selectedMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                                 </div>
                             )}
+
+                            {/* Bills History */}
+                            <div className="card mt-4">
+                                <div className="card-header">
+                                    <h6>📜 Bills History</h6>
+                                </div>
+                                <div className="card-body">
+                                    {!billsHistory || billsHistory.length === 0 ? (
+                                        <div className="text-center text-muted py-4">
+                                            <i className="bi bi-file-earmark-text" style={{ fontSize: '24px' }}></i>
+                                            <p className="mb-0">No bills history found</p>
+                                        </div>
+                                    ) : (
+                                        <div className="table-responsive">
+                                            <table className="table table-striped">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Month</th>
+                                                        <th>Doctor</th>
+                                                        <th>Work Orders</th>
+                                                        <th>Total Amount (₹)</th>
+                                                        <th>Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {billsHistory.map(bill => (
+                                                        <tr key={bill.id}>
+                                                            <td>{new Date(bill.billing_month + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</td>
+                                                            <td>{bill.doctor_name}</td>
+                                                            <td>{bill.work_orders_count || 0}</td>
+                                                            <td>₹{(bill.total_amount || 0).toFixed(2)}</td>
+                                                            <td>
+                                                                <button
+                                                                    className="btn btn-sm btn-outline-primary"
+                                                                    onClick={() => regenerateBill(bill.id)}
+                                                                    disabled={loading}
+                                                                >
+                                                                    <i className="bi bi-arrow-clockwise"></i> Regenerate
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
