@@ -2,6 +2,7 @@ import React from 'react';
 import './WorkOrdersTable.css';
 import { printInitialBill } from './bills/BillPrintUtils';
 import { dentalLabService } from '../services/dentalLabService';
+import ToothQuadrantDisplay from '../components/ToothQuadrantDisplay';
 
 const WorkOrdersTable = ({ 
     filteredWorkOrders, 
@@ -28,10 +29,39 @@ const WorkOrdersTable = ({
     isBatchSelected,
     handleSelectBatch,
     isBatchCompleted,
-    batchGroups
+    batchGroups,
+    workOrderTrials,
+    loadTrialsForWorkOrder,
+    showTrialForm,
+    setShowTrialForm,
+    newTrial,
+    handleTrialInputChange,
+    handleAddTrial,
+    handleDeleteTrial,
+    handleReturnOrder,
+    handleCompleteRevision,
+    loadRevisionHistory
 }) => {
     const [expandedOrders, setExpandedOrders] = React.useState(new Set());
     
+    // Helper function to get status badge
+    const getStatusBadge = (status) => {
+        switch (status) {
+            case 'completed':
+                return { class: 'bg-success', text: 'Completed' };
+            case 'in_progress':
+                return { class: 'bg-primary', text: 'In Progress' };
+            case 'returned':
+                return { class: 'bg-warning text-dark', text: 'Returned' };
+            case 'revision_in_progress':
+                return { class: 'bg-info', text: 'Revision in Progress' };
+            case 'cancelled':
+                return { class: 'bg-danger', text: 'Cancelled' };
+            default:
+                return { class: 'bg-secondary', text: 'Unknown' };
+        }
+    };
+   
     // Handle printing initial bill for existing bills
     const handlePrintInitialBill = async (order) => {
         try {
@@ -76,12 +106,17 @@ const WorkOrdersTable = ({
         }
     };
     
+    
     const toggleExpanded = (orderId) => {
         const newExpanded = new Set(expandedOrders);
         if (newExpanded.has(orderId)) {
             newExpanded.delete(orderId);
         } else {
             newExpanded.add(orderId);
+            // Load trials when expanding for the first time
+            if (loadTrialsForWorkOrder) {
+                loadTrialsForWorkOrder(orderId);
+            }
         }
         setExpandedOrders(newExpanded);
     };
@@ -115,6 +150,11 @@ const WorkOrdersTable = ({
                                         {order.batch_id && (
                                             <span className="badge bg-info ms-2">Batch ({order.batch_size})</span>
                                         )}
+                                        {order.is_revision && order.revision_count > 0 && (
+                                            <span className="badge bg-warning text-dark ms-2">
+                                                Rev #{order.revision_count}
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="small text-muted">
                                         <strong>Dr. {order.doctor_name}</strong>
@@ -122,8 +162,8 @@ const WorkOrdersTable = ({
                                 </div>
                             </div>
                             <div className="d-flex align-items-center">
-                                <span className={`badge me-2 ${order.status === 'completed' ? 'bg-success' : 'bg-primary'}`}>
-                                    {order.status === 'completed' ? 'Completed' : 'In Progress'}
+                                <span className={`badge me-2 ${getStatusBadge(order.status).class}`}>
+                                    {getStatusBadge(order.status).text}
                                 </span>
                                 <small className={`text-muted expand-icon ${isExpanded(order.id) ? 'expanded' : ''}`}>
                                     {isExpanded(order.id) ? '▼' : '▶'}
@@ -222,7 +262,7 @@ const WorkOrdersTable = ({
                                                 💰
                                             </button>
                                         )}
-                                        {order.status !== 'completed' && (
+                                        {order.status === 'in_progress' && (
                                             <button
                                                 className="btn btn-success btn-sm"
                                                 onClick={(e) => {
@@ -233,6 +273,50 @@ const WorkOrdersTable = ({
                                             >
                                                 ✓
                                             </button>
+                                        )}
+                                        {order.status === 'completed' && billStatus[order.id]?.hasBill && (
+                                            <button
+                                                className="btn btn-warning btn-sm"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    console.log('Return button clicked for order:', {
+                                                        id: order.id,
+                                                        status: order.status,
+                                                        billStatus: billStatus[order.id],
+                                                        serial_number: order.serial_number
+                                                    });
+                                                    handleReturnOrder(order);
+                                                }}
+                                                title={`Return for revision (Status: ${order.status}, Bill: ${billStatus[order.id]?.hasBill ? 'Yes' : 'No'})`}
+                                            >
+                                                ↩️
+                                            </button>
+                                        )}
+                                        {order.status === 'revision_in_progress' && (
+                                            <button
+                                                className="btn btn-success btn-sm"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setSelectedOrder(order.id);
+                                                    setCompletionDate(new Date().toISOString().split('T')[0]);
+                                                }}
+                                                title="Complete revision"
+                                            >
+                                                ✓
+                                            </button>
+                                        )}
+                                        {(order.is_revision || order.revision_count > 0) && (
+                                            <button
+                                                className="btn btn-outline-info btn-sm"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    loadRevisionHistory(order.id);
+                                                }}
+                                                title="View revision history"
+                                            >
+                                                📋
+                                            </button>
+                                        
                                         )}
                                     </div>
                                 )}
@@ -271,30 +355,89 @@ const WorkOrdersTable = ({
                                         )}
                                     </div>
                                     <div className="col-6">
-                                        {(order.requires_trial || order.trial_date_1 || order.trial_date_2) && (
+                                        {/* Dynamic Trials Display */}
+                                        {(order.requires_trial || (workOrderTrials[order.id] && workOrderTrials[order.id].length > 0)) && (
                                             <div className="mb-2">
                                                 <span className="text-muted">Trial Information:</span><br/>
                                                 {order.requires_trial && (
                                                     <span className="badge bg-warning text-dark mb-1">🦷 Trial Required</span>
                                                 )}
-                                                {order.trial_date_1 && (
-                                                    <div className="small text-success mt-1">
-                                                        ✓ Trial 1: {formatDate(order.trial_date_1)}
+                                                
+                                                {/* Display existing trials */}
+                                                {workOrderTrials[order.id] && workOrderTrials[order.id].map((trial, index) => (
+                                                    <div key={trial.id} className="small text-success mt-1 d-flex justify-content-between align-items-center">
+                                                        <span>✓ {trial.trial_name}: {formatDate(trial.trial_date)}</span>
+                                                        {editingOrder === order.id && (
+                                                            <button
+                                                                className="btn btn-sm btn-outline-danger ms-2"
+                                                                onClick={() => handleDeleteTrial(trial.id)}
+                                                                title="Delete trial"
+                                                            >
+                                                                ×
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                                
+                                                {/* Add trial button when editing */}
+                                                {editingOrder === order.id && (
+                                                    <div className="mt-2">
+                                                        {!showTrialForm[order.id] ? (
+                                                            <button
+                                                                className="btn btn-sm btn-outline-primary"
+                                                                onClick={() => {
+                                                                    setShowTrialForm(prev => ({ ...prev, [order.id]: true }));
+                                                                    loadTrialsForWorkOrder(order.id);
+                                                                }}
+                                                            >
+                                                                + Add Trial
+                                                            </button>
+                                                        ) : (
+                                                            <div className="border rounded p-2 bg-light">
+                                                                <div className="mb-2">
+                                                                    <label className="form-label small">Trial Name:</label>
+                                                                    <input
+                                                                        type="text"
+                                                                        className="form-control form-control-sm"
+                                                                        name="trial_name"
+                                                                        value={newTrial.trial_name}
+                                                                        onChange={handleTrialInputChange}
+                                                                        placeholder="e.g., First Trial, Bite Check, etc."
+                                                                    />
+                                                                </div>
+                                                                <div className="mb-2">
+                                                                    <label className="form-label small">Trial Date:</label>
+                                                                    <input
+                                                                        type="date"
+                                                                        className="form-control form-control-sm"
+                                                                        name="trial_date"
+                                                                        value={newTrial.trial_date}
+                                                                        onChange={handleTrialInputChange}
+                                                                    />
+                                                                </div>
+                                                                <div className="d-flex gap-1">
+                                                                    <button
+                                                                        className="btn btn-sm btn-success"
+                                                                        onClick={handleAddTrial}
+                                                                    >
+                                                                        Save
+                                                                    </button>
+                                                                    <button
+                                                                        className="btn btn-sm btn-secondary"
+                                                                        onClick={() => setShowTrialForm(prev => ({ ...prev, [order.id]: false }))}
+                                                                    >
+                                                                        Cancel
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
-                                                {order.trial_date_2 && (
-                                                    <div className="small text-success">
-                                                        ✓ Trial 2: {formatDate(order.trial_date_2)}
-                                                    </div>
-                                                )}
-                                                {order.requires_trial && !order.trial_date_1 && (
+                                                
+                                                {/* Show waiting message for trials */}
+                                                {order.requires_trial && (!workOrderTrials[order.id] || workOrderTrials[order.id].length === 0) && (
                                                     <div className="small text-warning">
-                                                        ⏳ Awaiting Trial 1
-                                                    </div>
-                                                )}
-                                                {order.requires_trial && order.trial_date_1 && !order.trial_date_2 && (
-                                                    <div className="small text-warning">
-                                                        ⏳ Awaiting Trial 2 (if needed)
+                                                        ⏳ No trials scheduled yet
                                                     </div>
                                                 )}
                                             </div>
@@ -335,33 +478,7 @@ const WorkOrdersTable = ({
                         {/* Editing Fields (Mobile) */}
                         {editingOrder === order.id && (
                             <div className="card-body border-top py-2">
-                                <div className="row">
-                                    <div className="col-6">
-                                        <div className="mb-2">
-                                            <label className="form-label small">Trial Date 1:</label>
-                                            <input
-                                                type="date"
-                                                name="trial_date_1"
-                                                className="form-control form-control-sm"
-                                                value={editData.trial_date_1 || ''}
-                                                onChange={handleEditInputChange}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="col-6">
-                                        <div className="mb-2">
-                                            <label className="form-label small">Trial Date 2:</label>
-                                            <input
-                                                type="date"
-                                                name="trial_date_2"
-                                                className="form-control form-control-sm"
-                                                value={editData.trial_date_2 || ''}
-                                                onChange={handleEditInputChange}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="mb-2">
+                                <div className="mb-3">
                                     <label className="form-label small">Feedback:</label>
                                     <textarea
                                         name="feedback"
@@ -371,6 +488,87 @@ const WorkOrdersTable = ({
                                         placeholder="Enter feedback..."
                                         rows="2"
                                     />
+                                </div>
+                                
+                                {/* Trial Management Section for Mobile */}
+                                <div className="mb-3">
+                                    <label className="form-label small">Trial Management:</label>
+                                    
+                                    {/* Display existing trials */}
+                                    {workOrderTrials[order.id] && workOrderTrials[order.id].length > 0 ? (
+                                        <div className="mb-2">
+                                            {workOrderTrials[order.id].map((trial) => (
+                                                <div key={trial.id} className="d-flex justify-content-between align-items-center mb-1 p-2 bg-light rounded">
+                                                    <small>
+                                                        <strong>{trial.trial_name}</strong><br/>
+                                                        <span className="text-muted">{formatDate(trial.trial_date)}</span>
+                                                    </small>
+                                                    <button
+                                                        className="btn btn-sm btn-outline-danger"
+                                                        onClick={() => handleDeleteTrial(trial.id)}
+                                                        title="Delete trial"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="mb-2">
+                                            <small className="text-muted">No trials added yet</small>
+                                        </div>
+                                    )}
+                                    
+                                    {/* Add trial button and form */}
+                                    {!showTrialForm[order.id] ? (
+                                        <button
+                                            className="btn btn-sm btn-outline-primary"
+                                            onClick={() => {
+                                                setShowTrialForm(prev => ({ ...prev, [order.id]: true }));
+                                                loadTrialsForWorkOrder(order.id);
+                                            }}
+                                        >
+                                            + Add Trial
+                                        </button>
+                                    ) : (
+                                        <div className="border rounded p-2 bg-white">
+                                            <div className="mb-2">
+                                                <label className="form-label small">Trial Name:</label>
+                                                <input
+                                                    type="text"
+                                                    className="form-control form-control-sm"
+                                                    name="trial_name"
+                                                    value={newTrial.trial_name}
+                                                    onChange={handleTrialInputChange}
+                                                    placeholder="e.g., First Trial, Bite Check, etc."
+                                                />
+                                            </div>
+                                            <div className="mb-2">
+                                                <label className="form-label small">Trial Date:</label>
+                                                <input
+                                                    type="date"
+                                                    className="form-control form-control-sm"
+                                                    name="trial_date"
+                                                    value={newTrial.trial_date}
+                                                    onChange={handleTrialInputChange}
+                                                />
+                                            </div>
+                                            <div className="d-flex gap-1">
+                                                <button
+                                                    className="btn btn-sm btn-success"
+                                                    onClick={handleAddTrial}
+                                                >
+                                                    Save
+                                                </button>
+                                                <button
+                                                    className="btn btn-sm btn-secondary"
+                                                    onClick={() => setShowTrialForm(prev => ({ ...prev, [order.id]: false }))}
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -489,8 +687,8 @@ const WorkOrdersTable = ({
                                             </div>
                                         </td>
                                         <td>
-                                            <span className={`badge ${order.status === 'completed' ? 'bg-success' : 'bg-primary'}`}>
-                                                {order.status === 'completed' ? 'Completed' : 'In Progress'}
+                                            <span className={`badge ${getStatusBadge(order.status).class}`}>
+                                                {getStatusBadge(order.status).text}
                                             </span>
                                             {order.completion_date && (
                                                 <div className="small text-muted">
@@ -566,7 +764,7 @@ const WorkOrdersTable = ({
                                                                 💰 Bill
                                                             </button>
                                                         )}
-                                                        {order.status !== 'completed' && (
+                                                         {order.status === 'in_progress' && (
                                                             <button
                                                                 className="btn btn-success"
                                                                 onClick={() => {
@@ -578,6 +776,43 @@ const WorkOrdersTable = ({
                                                                 ✓
                                                             </button>
                                                         )}
+ {order.status === 'completed' && billStatus[order.id]?.hasBill && (
+                                            <button
+                                                className="btn btn-warning btn-sm"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleReturnOrder(order);
+                                                }}
+                                                title="Return for revision"
+                                            >
+                                                ↩️
+                                            </button>
+                                        )}
+                                        {order.status === 'revision_in_progress' && (
+                                            <button
+                                                className="btn btn-success btn-sm"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setSelectedOrder(order.id);
+                                                    setCompletionDate(new Date().toISOString().split('T')[0]);
+                                                }}
+                                                title="Complete revision"
+                                            >
+                                                ✓
+                                            </button>
+                                        )}
+                                        {(order.is_revision || order.revision_count > 0) && (
+                                            <button
+                                                className="btn btn-outline-info btn-sm"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    loadRevisionHistory(order.id);
+                                                }}
+                                                title="View revision history"
+                                            >
+                                                📋
+                                            </button>
+                                        )}
                                                     </>
                                                 )}
                                             </div>
@@ -622,23 +857,24 @@ const WorkOrdersTable = ({
                                                             )}
                                                         </div>
                                                         <div className="col-md-3">
-                                                            {(order.requires_trial || order.trial_date_1 || order.trial_date_2) && (
+                                                            {/* Dynamic Trials Display in Desktop Expanded View */}
+                                                            {(order.requires_trial || (workOrderTrials[order.id] && workOrderTrials[order.id].length > 0)) && (
                                                                 <div className="mb-3">
                                                                     <span className="text-muted">Trial Information:</span><br/>
                                                                     {order.requires_trial && (
                                                                         <span className="badge bg-warning text-dark mb-2">🦷 Trial Required</span>
                                                                     )}
-                                                                    {order.trial_date_1 && (
-                                                                        <div className="text-success mt-1">✓ Trial 1: {formatDate(order.trial_date_1)}</div>
-                                                                    )}
-                                                                    {order.trial_date_2 && (
-                                                                        <div className="text-success">✓ Trial 2: {formatDate(order.trial_date_2)}</div>
-                                                                    )}
-                                                                    {order.requires_trial && !order.trial_date_1 && (
-                                                                        <div className="text-warning mt-1">⏳ Awaiting Trial 1</div>
-                                                                    )}
-                                                                    {order.requires_trial && order.trial_date_1 && !order.trial_date_2 && (
-                                                                        <div className="text-warning">⏳ Awaiting Trial 2 (if needed)</div>
+                                                                    
+                                                                    {/* Display existing trials */}
+                                                                    {workOrderTrials[order.id] && workOrderTrials[order.id].map((trial) => (
+                                                                        <div key={trial.id} className="text-success mt-1">
+                                                                            ✓ {trial.trial_name}: {formatDate(trial.trial_date)}
+                                                                        </div>
+                                                                    ))}
+                                                                    
+                                                                    {/* Show waiting message if no trials */}
+                                                                    {order.requires_trial && (!workOrderTrials[order.id] || workOrderTrials[order.id].length === 0) && (
+                                                                        <div className="text-warning mt-1">⏳ No trials scheduled yet</div>
                                                                     )}
                                                                 </div>
                                                             )}
@@ -646,7 +882,7 @@ const WorkOrdersTable = ({
                                                         <div className="col-md-6">
                                                             {order.feedback && (
                                                                 <div className="mb-2">
-                                                                    <span className="text-muted">Feedback:</span><br/>
+                                                                    <span fclassName="text-muted">Feedback:</span><br/>
                                                                     <span className="text-dark">{order.feedback}</span>
                                                                 </div>
                                                             )}
@@ -658,37 +894,14 @@ const WorkOrdersTable = ({
                                     )}
                                     
                                     {/* Editing Row (Desktop) */}
+
                                     {editingOrder === order.id && (
                                         <tr className="table-warning">
                                             <td colSpan="9">
                                                 <div className="p-3">
                                                     <h6 className="mb-3">Editing: {order.serial_number}</h6>
                                                     <div className="row">
-                                                        <div className="col-md-4">
-                                                            <div className="mb-3">
-                                                                <label className="form-label small">Trial Date 1:</label>
-                                                                <input
-                                                                    type="date"
-                                                                    name="trial_date_1"
-                                                                    className="form-control form-control-sm"
-                                                                    value={editData.trial_date_1 || ''}
-                                                                    onChange={handleEditInputChange}
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                        <div className="col-md-4">
-                                                            <div className="mb-3">
-                                                                <label className="form-label small">Trial Date 2:</label>
-                                                                <input
-                                                                    type="date"
-                                                                    name="trial_date_2"
-                                                                    className="form-control form-control-sm"
-                                                                    value={editData.trial_date_2 || ''}
-                                                                    onChange={handleEditInputChange}
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                        <div className="col-md-4">
+                                                        <div className="col-md-6">
                                                             <div className="mb-3">
                                                                 <label className="form-label small">Feedback:</label>
                                                                 <textarea
@@ -699,6 +912,88 @@ const WorkOrdersTable = ({
                                                                     placeholder="Enter feedback..."
                                                                     rows="2"
                                                                 />
+                                                            </div>
+                                                        </div>
+                                                        <div className="col-md-6">
+                                                            {/* Trial Management Section */}
+                                                            <div className="mb-3">
+                                                                <label className="form-label small">Trial Management:</label>
+                                                                
+                                                                {/* Display existing trials */}
+                                                                {workOrderTrials[order.id] && workOrderTrials[order.id].length > 0 ? (
+                                                                    <div className="mb-2">
+                                                                        {workOrderTrials[order.id].map((trial) => (
+                                                                            <div key={trial.id} className="d-flex justify-content-between align-items-center mb-1 p-2 bg-light rounded">
+                                                                                <small>
+                                                                                    <strong>{trial.trial_name}</strong><br/>
+                                                                                    <span className="text-muted">{formatDate(trial.trial_date)}</span>
+                                                                                </small>
+                                                                                <button
+                                                                                    className="btn btn-sm btn-outline-danger"
+                                                                                    onClick={() => handleDeleteTrial(trial.id)}
+                                                                                    title="Delete trial"
+                                                                                >
+                                                                                    ×
+                                                                                </button>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="mb-2">
+                                                                        <small className="text-muted">No trials added yet</small>
+                                                                    </div>
+                                                                )}
+                                                                
+                                                                {/* Add trial button and form */}
+                                                                {!showTrialForm[order.id] ? (
+                                                                    <button
+                                                                        className="btn btn-sm btn-outline-primary"
+                                                                        onClick={() => {
+                                                                            setShowTrialForm(prev => ({ ...prev, [order.id]: true }));
+                                                                            loadTrialsForWorkOrder(order.id);
+                                                                        }}
+                                                                    >
+                                                                        + Add Trial
+                                                                    </button>
+                                                                ) : (
+                                                                    <div className="border rounded p-2 bg-white">
+                                                                        <div className="mb-2">
+                                                                            <label className="form-label small">Trial Name:</label>
+                                                                            <input
+                                                                                type="text"
+                                                                                className="form-control form-control-sm"
+                                                                                name="trial_name"
+                                                                                value={newTrial.trial_name}
+                                                                                onChange={handleTrialInputChange}
+                                                                                placeholder="e.g., First Trial, Bite Check, etc."
+                                                                            />
+                                                                        </div>
+                                                                        <div className="mb-2">
+                                                                            <label className="form-label small">Trial Date:</label>
+                                                                            <input
+                                                                                type="date"
+                                                                                className="form-control form-control-sm"
+                                                                                name="trial_date"
+                                                                                value={newTrial.trial_date}
+                                                                                onChange={handleTrialInputChange}
+                                                                            />
+                                                                        </div>
+                                                                        <div className="d-flex gap-1">
+                                                                            <button
+                                                                                className="btn btn-sm btn-success"
+                                                                                onClick={handleAddTrial}
+                                                                            >
+                                                                                Save
+                                                                            </button>
+                                                                            <button
+                                                                                className="btn btn-sm btn-secondary"
+                                                                                onClick={() => setShowTrialForm(prev => ({ ...prev, [order.id]: false }))}
+                                                                            >
+                                                                                Cancel
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -727,7 +1022,12 @@ const WorkOrdersTable = ({
                     <div className="modal-dialog">
                         <div className="modal-content">
                             <div className="modal-header">
-                                <h5 className="modal-title">Mark Order as Completed</h5>
+                                <h5 className="modal-title">
+                                    {filteredWorkOrders.find(o => o.id === selectedOrder)?.status === 'revision_in_progress' 
+                                        ? 'Complete Revision' 
+                                        : 'Mark Order as Completed'
+                                    }
+                                </h5>
                                 <button
                                     type="button"
                                     className="btn-close"
@@ -735,21 +1035,43 @@ const WorkOrdersTable = ({
                                 ></button>
                             </div>
                             <div className="modal-body">
-                                <p>
-                                    Mark work order <strong>
-                                        {filteredWorkOrders.find(o => o.id === selectedOrder)?.serial_number}
-                                    </strong> as completed?
-                                </p>
-                                <div className="mb-3">
-                                    <label className="form-label">Completion Date:</label>
-                                    <input
-                                        type="date"
-                                        className="form-control"
-                                        value={completionDate}
-                                        onChange={(e) => setCompletionDate(e.target.value)}
-                                        max={new Date().toISOString().split('T')[0]}
-                                    />
-                                </div>
+                                {(() => {
+                                    const currentOrder = filteredWorkOrders.find(o => o.id === selectedOrder);
+                                    const isRevision = currentOrder?.status === 'revision_in_progress';
+                                    
+                                    return (
+                                        <>
+                                            <p>
+                                                {isRevision ? 'Complete revision for' : 'Mark'} work order <strong>
+                                                    {currentOrder?.serial_number}
+                                                </strong> {isRevision ? '' : 'as completed'}?
+                                            </p>
+                                            {isRevision && currentOrder?.revision_count > 0 && (
+                                                <div className="alert alert-info">
+                                                    <small>
+                                                        <strong>Revision #{currentOrder.revision_count}</strong><br/>
+                                                        Return reason: {currentOrder.return_reason}<br/>
+                                                        {currentOrder.revision_notes && (
+                                                            <>Notes: {currentOrder.revision_notes}</>
+                                                        )}
+                                                    </small>
+                                                </div>
+                                            )}
+                                            <div className="mb-3">
+                                                <label className="form-label">
+                                                    {isRevision ? 'Revision Completion Date:' : 'Completion Date:'}
+                                                </label>
+                                                <input
+                                                    type="date"
+                                                    className="form-control"
+                                                    value={completionDate}
+                                                    onChange={(e) => setCompletionDate(e.target.value)}
+                                                    max={new Date().toISOString().split('T')[0]}
+                                                />
+                                            </div>
+                                        </>
+                                    );
+                                })()}
                             </div>
                             <div className="modal-footer">
                                 <button
@@ -762,10 +1084,20 @@ const WorkOrdersTable = ({
                                 <button
                                     type="button"
                                     className="btn btn-success"
-                                    onClick={() => handleCompleteOrder(selectedOrder)}
+                                    onClick={() => {
+                                        const currentOrder = filteredWorkOrders.find(o => o.id === selectedOrder);
+                                        if (currentOrder?.status === 'revision_in_progress') {
+                                            handleCompleteRevision(selectedOrder);
+                                        } else {
+                                            handleCompleteOrder(selectedOrder);
+                                        }
+                                    }}
                                     disabled={!completionDate}
                                 >
-                                    ✓ Mark Complete
+                                    ✓ {filteredWorkOrders.find(o => o.id === selectedOrder)?.status === 'revision_in_progress' 
+                                        ? 'Complete Revision' 
+                                        : 'Mark Complete'
+                                    }
                                 </button>
                             </div>
                         </div>

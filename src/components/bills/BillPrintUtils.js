@@ -41,7 +41,23 @@ export const formatToothNumbers = (toothNumbers) => {
 };
 
 export const generateToothQuadrantDisplay = (toothNumbers) => {
+    console.log('=== TOOTH QUADRANT DEBUG ===');
+    console.log('Input toothNumbers:', toothNumbers);
+    console.log('Type:', typeof toothNumbers);
+    console.log('Is array:', Array.isArray(toothNumbers));
+    
     const toothArray = Array.isArray(toothNumbers) ? toothNumbers : (toothNumbers ? [toothNumbers] : []);
+    console.log('Processed toothArray:', toothArray);
+    console.log('============================');
+    
+    // If no teeth selected, show a message instead of empty quadrant
+    if (toothArray.length === 0) {
+        return `
+            <div style="display: inline-block; padding: 5px; font-family: Arial; font-size: 11px; color: #666; font-style: italic;">
+                No teeth specified
+            </div>
+        `;
+    }
     
     const quadrants = {
         upperRight: toothArray.filter(t => t >= 11 && t <= 18),
@@ -130,12 +146,56 @@ export const generateCompanyHeader = () => `
 export const generateBillFooter = () => `
     <div class="footer">
         <div class="thank-you">🙏 Thank you for choosing MARSHAL DENTAL ART!</div>
-        <p>For any queries, please contact us at the above numbers</p>
         <p><strong>Generated on:</strong> ${formatDate(new Date())}</p>
     </div>
 `;
 
 export const handleSingleBillPrint = async (bill) => {
+    console.log('=== SINGLE BILL PRINT DEBUG ===');
+    console.log('Bill object:', bill);
+    console.log('Bill work_order_id:', bill.work_order_id);
+    console.log('tooth_numbers type:', typeof bill.tooth_numbers);
+    console.log('tooth_numbers value:', bill.tooth_numbers);
+    console.log('tooth_numbers is array:', Array.isArray(bill.tooth_numbers));
+    console.log('tooth_numbers stringified:', JSON.stringify(bill.tooth_numbers));
+    
+    // Start with bill's tooth_numbers
+    let toothNumbers = bill.tooth_numbers;
+    
+    // For individual bills, always try to get fresh tooth_numbers from work order
+    // This ensures consistency with grouped bills which use work_order data
+    console.log('Always fetching fresh tooth_numbers from work order for consistency...');
+    console.log('Work order ID:', bill.work_order_id);
+    
+    if (bill.work_order_id) {
+        try {
+            // Import the service properly
+            const response = await dentalLabService.getWorkOrder(bill.work_order_id);
+            console.log('Work order fetch response:', response);
+                
+            if (response.success && response.data) {
+                // Use work order tooth_numbers (this is what grouped bills do)
+                toothNumbers = response.data.tooth_numbers;
+                console.log('Using fresh tooth_numbers from work order:', toothNumbers);
+                console.log('Fresh tooth_numbers type:', typeof toothNumbers);
+                console.log('Fresh tooth_numbers stringified:', JSON.stringify(toothNumbers));
+            } else {
+                console.warn('Failed to fetch work order tooth_numbers, using bill data:', response.error);
+                // Fallback to bill tooth_numbers if work order fetch fails
+            }
+        } catch (error) {
+            console.warn('Error fetching work order tooth_numbers, using bill data:', error);
+            // Fallback to bill tooth_numbers if error occurs
+        }
+    } else {
+        console.warn('No work_order_id found in bill for tooth number fetch');
+    }
+    
+    console.log('Final tooth_numbers for print:', toothNumbers);
+    console.log('Final tooth_numbers type:', typeof toothNumbers);
+    console.log('Final tooth_numbers stringified:', JSON.stringify(toothNumbers));
+    console.log('================================');
+    
     const printWindow = window.open('', '', 'width=800,height=600');
     
     const billContent = `
@@ -173,7 +233,7 @@ export const handleSingleBillPrint = async (bill) => {
                         <tr>
                             <td>${formatDate(bill.completion_date || bill.bill_date)}</td>
                             <td>${bill.patient_name || 'N/A'}</td>
-                            <td>${generateToothQuadrantDisplay(bill.tooth_numbers)}</td>
+                            <td>${generateToothQuadrantDisplay(toothNumbers)}</td>
                             <td>${bill.work_description || 'N/A'}</td>
                             <td class="amount">₹${bill.amount || '0.00'}</td>
                         </tr>
@@ -358,7 +418,7 @@ export const handleGroupedBillPrint = async (bill) => {
 // Print initial bill (without amount) - for staff use
 export const printInitialBill = async (bill) => {
     const printWindow = window.open('', '', 'width=800,height=600');
-    
+
     if (!printWindow) {
         alert('Popup blocked! Please allow popups for this site.');
         return;
@@ -366,49 +426,65 @@ export const printInitialBill = async (bill) => {
 
     try {
         console.log('Printing initial bill (without amount):', bill);
-        
+
         let billItems = [];
-        
+
         // Handle grouped bills (multiple work orders)
         if (bill.is_grouped) {
             console.log('=== INITIAL BILL DEBUG START ===');
             console.log('Processing grouped initial bill for bill ID:', bill.id);
-            
+
             const response = await dentalLabService.getWorkOrdersByBillId(bill.id);
             console.log('Work orders response:', response);
-            
+
             if (!response || response.error || !response.data) {
                 console.error('Failed to load work orders for initial bill:', response?.error);
                 throw new Error('Unable to load work order details for initial bill');
             }
-            
+
             const workOrders = response.data;
             console.log('Work orders for initial bill:', workOrders);
-            
+
             billItems = workOrders.map((order, index) => {
                 console.log(`Mapping work order ${index + 1} for initial bill:`, order);
-                
+
                 const quality = order.product_quality || order.work_description || order.quality || 'N/A';
                 const date = order.completion_date || order.order_date || order.created_at;
-                
+
                 const mappedItem = {
                     date: formatDate(date),
                     patient: order.patient_name || 'N/A',
                     toothPosition: order.tooth_numbers || [],
                     quality: quality,
-                    showAmount: false // Key difference - no amount for initial bill
+                    showAmount: false
                 };
-                
+
                 console.log(`Final mapped item ${index + 1} for initial bill:`, mappedItem);
                 return mappedItem;
             });
+
             console.log('=== INITIAL BILL DEBUG END ===');
+
         } else {
-            // Single work order bill
+            // 🔄 New logic to fetch fresh tooth numbers
+            let freshToothNumbers = bill.tooth_numbers || [];
+
+            if (bill.work_order_id) {
+                try {
+                    const response = await dentalLabService.getWorkOrder(bill.work_order_id);
+                    if (response.success && response.data?.tooth_numbers) {
+                        freshToothNumbers = response.data.tooth_numbers;
+                        console.log('Fetched fresh tooth numbers from work order:', freshToothNumbers);
+                    }
+                } catch (error) {
+                    console.warn("Couldn't fetch fresh tooth numbers for individual bill:", error);
+                }
+            }
+
             billItems = [{
                 date: formatDate(bill.completion_date || bill.bill_date),
                 patient: bill.patient_name || 'N/A',
-                toothPosition: bill.tooth_numbers || [],
+                toothPosition: freshToothNumbers,
                 quality: bill.work_description || 'N/A',
                 showAmount: false
             }];

@@ -18,7 +18,6 @@ const AdminDashboard = () => {
     const [realtimeStats, setRealtimeStats] = useState({
         currentMonthOrders: 0,
         currentMonthRevenue: 0,
-        unprocessedOrders: 0,
         totalDoctors: 0
     });
     const [notifications, setNotifications] = useState([]);
@@ -49,6 +48,16 @@ const AdminDashboard = () => {
 
         loadUserData();
 
+        // Refresh stats when page becomes visible (user returns from other pages)
+        const handleVisibilityChange = () => {
+            if (!document.hidden) {
+                loadRealtimeStats();
+                loadNotifications();
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
         // Set up real-time updates every 30 seconds
         const interval = setInterval(() => {
             loadRealtimeStats();
@@ -62,7 +71,7 @@ const AdminDashboard = () => {
                 switch(e.key) {
                     case 'b': 
                         e.preventDefault();
-                        navigate('/bills-management'); 
+                        navigate('/admin/monthly-billing'); 
                         break;
                     case 'u': 
                         e.preventDefault();
@@ -85,6 +94,7 @@ const AdminDashboard = () => {
 
         return () => {
             clearInterval(interval);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
             document.removeEventListener('keydown', handleKeyShortcuts);
         };
     }, [navigate, showNotifications]);
@@ -166,16 +176,12 @@ const AdminDashboard = () => {
             
             // Get work orders for current month
             const workOrdersResponse = await dentalLabService.getAllWorkOrders();
+            
             const currentMonthOrders = workOrdersResponse.data?.filter(order => {
                 const orderDate = new Date(order.completion_date || order.created_at);
                 return orderDate.getMonth() === currentMonth && 
                        orderDate.getFullYear() === currentYear;
             }).length || 0;
-
-            // Get unprocessed orders (without amounts)
-            const unprocessedOrders = workOrdersResponse.data?.filter(order => 
-                !order.amount || order.amount === 0
-            ).length || 0;
 
             // Get unique doctors count
             const uniqueDoctors = new Set();
@@ -195,7 +201,6 @@ const AdminDashboard = () => {
             setRealtimeStats({
                 currentMonthOrders: currentMonthOrders,
                 currentMonthRevenue: monthlyStats.currentMonthRevenue, // From completed bills
-                unprocessedOrders: unprocessedOrders,
                 totalDoctors: uniqueDoctors.size
             });
         } catch (error) {
@@ -211,33 +216,20 @@ const AdminDashboard = () => {
             const newNotifications = [];
 
             if (billsResponse.data) {
-                // Orders needing pricing
-                const unpricedOrders = workOrdersResponse.data?.filter(order => !order.amount || order.amount === 0) || [];
-                if (unpricedOrders.length > 0) {
-                    newNotifications.push({
-                        id: 'unpriced-orders',
-                        type: 'warning',
-                        title: 'Work Orders Need Pricing',
-                        message: `${unpricedOrders.length} work orders are waiting for price assignment`,
-                        action: () => navigate('/admin/monthly-billing'),
-                        timestamp: new Date()
-                    });
-                }
-
-                // Overdue bills
-                const overdueBills = billsResponse.data.filter(bill => {
+                // Bills without payment (need collection follow-up)
+                const unpaidBills = billsResponse.data.filter(bill => {
                     const billDate = new Date(bill.bill_date);
                     const daysAgo = (new Date() - billDate) / (1000 * 60 * 60 * 24);
-                    return daysAgo > 7 && bill.status === 'pending';
+                    return daysAgo > 7 && bill.amount && bill.amount > 0 && bill.status === 'pending';
                 });
                 
-                if (overdueBills.length > 0) {
+                if (unpaidBills.length > 0) {
                     newNotifications.push({
-                        id: 'overdue-bills',
+                        id: 'unpaid-bills',
                         type: 'urgent',
-                        title: 'Overdue Bills',
-                        message: `${overdueBills.length} bills are overdue (>7 days)`,
-                        action: () => navigate('/bills-management'),
+                        title: 'Bills Need Payment Follow-up',
+                        message: `${unpaidBills.length} priced bills need payment collection`,
+                        action: () => navigate('/admin/monthly-billing'),
                         timestamp: new Date()
                     });
                 }
@@ -258,7 +250,7 @@ const AdminDashboard = () => {
                         type: 'info',
                         title: 'Long-Running Orders',
                         message: `${longRunningOrders.length} orders running >2 weeks`,
-                        action: () => navigate('/bills-management'), // Navigate to bills management instead
+                        action: () => navigate('/work-orders-list'), // Navigate to work orders list instead
                         timestamp: new Date()
                     });
                 }
@@ -290,6 +282,19 @@ const AdminDashboard = () => {
                         <div className="d-flex justify-content-between align-items-center mb-4">
                             <h2>⚙️ Enhanced Admin Dashboard</h2>
                             <div className="d-flex align-items-center">
+                                {/* Refresh Button */}
+                                <button 
+                                    className="btn btn-outline-success me-2"
+                                    onClick={() => {
+                                        loadRealtimeStats();
+                                        loadNotifications();
+                                        setLastRefresh(new Date());
+                                    }}
+                                    title="Refresh Dashboard (Ctrl+R)"
+                                >
+                                    🔄
+                                </button>
+                                
                                 {/* Notifications Bell */}
                                 <div className="position-relative me-3">
                                     <button 
@@ -415,21 +420,7 @@ const AdminDashboard = () => {
                                     </div>
                                 </div>
                             </div>
-                            <div className="col-md-3">
-                                <div className="card text-white bg-warning admin-card">
-                                    <div className="card-header d-flex justify-content-between">
-                                        <span>Unpriced Orders</span>
-                                        <span>⏳</span>
-                                    </div>
-                                    <div className="card-body">
-                                        <h2 className="card-title">{realtimeStats.unprocessedOrders}</h2>
-                                        <p className="card-text">Need pricing</p>
-                                        <small className="opacity-75">
-                                            {realtimeStats.unprocessedOrders > 0 ? '🚨 Action needed' : '✅ All priced'}
-                                        </small>
-                                    </div>
-                                </div>
-                            </div>
+
                             <div className="col-md-3">
                                 <div className="card text-white bg-info admin-card">
                                     <div className="card-header d-flex justify-content-between">
@@ -450,46 +441,17 @@ const AdminDashboard = () => {
                             <div className="col-lg-4 col-md-6">
                                 <div className="card admin-action-card">
                                     <div className="card-header">
-                                        <h5>💰 Bills Management</h5>
+                                        <h5>💰 Monthly Billing & Pricing</h5>
                                     </div>
                                     <div className="card-body">
-                                        <p>Review bills, add pricing, and manage billing with enhanced features.</p>
+                                        <p>Complete month-end billing process: add pricing, generate bills, and create monthly summaries.</p>
                                         <div className="d-grid gap-2">
                                             <button 
                                                 className="btn btn-primary" 
-                                                onClick={() => navigate('/admin/bills-management')}
-                                            >
-                                                📊 Manage Bills & Pricing
-                                            </button>
-                                            {realtimeStats.unprocessedOrders > 0 && (
-                                                <div className="alert alert-warning mb-0">
-                                                    <small>
-                                                        🚨 {realtimeStats.unprocessedOrders} orders need immediate pricing
-                                                    </small>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div className="col-lg-4 col-md-6">
-                                <div className="card admin-action-card">
-                                    <div className="card-header">
-                                        <h5>📊 Monthly Billing</h5>
-                                    </div>
-                                    <div className="card-body">
-                                        <p>Monthly consolidated billing system - price all orders for a doctor by month.</p>
-                                        <div className="d-grid gap-2">
-                                            <button 
-                                                className="btn btn-info" 
                                                 onClick={() => navigate('/admin/monthly-billing')}
                                             >
-                                                📊 Monthly Bills
+                                                📊 Monthly Billing & Pricing
                                             </button>
-                                            <div className="small text-muted">
-                                                End-of-month billing workflow
-                                            </div>
                                         </div>
                                     </div>
                                 </div>

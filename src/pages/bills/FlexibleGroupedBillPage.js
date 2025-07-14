@@ -225,6 +225,23 @@ const FlexibleGroupedBillPage = () => {
         setLoading(false);
     };
 
+    // Check for pre-selected orders from navigation state
+    useEffect(() => {
+        if (location.state?.preSelectedOrders) {
+            console.log('Pre-selected orders received:', location.state.preSelectedOrders);
+            // Pre-select the orders that were passed from WorkOrdersList
+            const preSelectedIds = location.state.preSelectedOrders.map(order => order.id);
+            setSelectedOrders(preSelectedIds);
+            
+            // Show a message indicating pre-selection
+            setMessage(`${location.state.preSelectedOrders.length} orders pre-selected for Dr. ${location.state.doctorName}`);
+        } else if (location.state?.allAvailableOrders) {
+            console.log('All available orders provided via navigation state');
+            // Just show a helpful message, don't pre-select anything
+            setMessage('Select work orders from the same doctor to create grouped bills');
+        }
+    }, [location.state]);
+
     return (
         <div className="container-fluid mt-4">
             <div className="row justify-content-center">

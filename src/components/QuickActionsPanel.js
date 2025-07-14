@@ -10,9 +10,9 @@ const QuickActionsPanel = () => {
         {
             id: 'bills',
             icon: '💰',
-            label: 'Bills Management',
-            description: 'Manage bills and pricing',
-            action: () => navigate('/bills-management'),
+            label: 'Monthly Billing & Pricing',
+            description: 'Complete monthly billing process with pricing',
+            action: () => navigate('/admin/monthly-billing'),
             color: '#3498db'
         },
         {

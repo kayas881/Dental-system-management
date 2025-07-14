@@ -54,8 +54,6 @@ const WorkOrderForm = () => {
         product_quality: '',
         product_shade: '',
         requires_trial: false,
-        trial_date_1: '',
-        trial_date_2: '',
         order_date: new Date().toISOString().split('T')[0],
         expected_complete_date: '',
         feedback: '',
@@ -247,8 +245,6 @@ const WorkOrderForm = () => {
                     product_quality: '',
                     product_shade: '',
                     requires_trial: false,
-                    trial_date_1: '',
-                    trial_date_2: '',
                     order_date: new Date().toISOString().split('T')[0],
                     expected_complete_date: '',
                     feedback: '',
@@ -536,35 +532,6 @@ const WorkOrderForm = () => {
                                         </label>
                                     </div>
                                 </div>
-
-                                {formData.requires_trial && (
-                                    <div className="row">
-                                        <div className="col-md-6">
-                                            <div className="mb-3">
-                                                <label className="form-label">First Trial Date</label>
-                                                <input
-                                                    type="date"
-                                                    className="form-control"
-                                                    name="trial_date_1"
-                                                    value={formData.trial_date_1}
-                                                    onChange={handleInputChange}
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="col-md-6">
-                                            <div className="mb-3">
-                                                <label className="form-label">Second Trial Date</label>
-                                                <input
-                                                    type="date"
-                                                    className="form-control"
-                                                    name="trial_date_2"
-                                                    value={formData.trial_date_2}
-                                                    onChange={handleInputChange}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
 
                                 <div className="mb-3">
                                     <label className="form-label">Feedback / Reason / Notes</label>

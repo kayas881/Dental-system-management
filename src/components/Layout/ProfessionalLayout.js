@@ -69,8 +69,7 @@ const ProfessionalLayout = ({ children }) => {
         if (isAdmin) {
             return [
                 { path: '/admin-dashboard', icon: '🏠', label: 'Dashboard' },
-                { path: '/bills-management', icon: '💰', label: 'Bills Management' },
-                { path: '/admin/grouped-bill', icon: '📊', label: 'Grouped Billing' },
+                { path: '/admin/monthly-billing', icon: '💰', label: 'Monthly Billing & Pricing' },
                 { path: '/user-management', icon: '👥', label: 'User Management' },
             ];
         } else if (isStaff) {
@@ -79,8 +78,6 @@ const ProfessionalLayout = ({ children }) => {
                 { path: '/work-order-form', icon: '📝', label: 'Create Work Order' },
                 { path: '/batch-work-order', icon: '📋', label: 'Batch Work Orders' },
                 { path: '/work-orders-list', icon: '📊', label: 'Work Orders & Billing' },
-                { path: '/bills-management', icon: '🧾', label: 'My Bills' },
-                { path: '/grouped-bill', icon: '💰', label: 'Batch Billing' },
             ];
         }
         return [];
@@ -95,16 +92,11 @@ const ProfessionalLayout = ({ children }) => {
         const pathMap = {
             '/admin-dashboard': 'Admin Dashboard',
             '/staff-dashboard': 'Staff Dashboard',
-            '/bills-management': 'Bills Management',
-            '/admin/bills-management': 'Bills Management',
-            '/staff/bills': 'My Bills',
+            '/admin/monthly-billing': 'Monthly Billing & Pricing',
             '/user-management': 'User Management',
             '/work-order-form': 'Create Work Order',
             '/batch-work-order': 'Batch Work Orders',
-            '/work-orders-list': 'Work Orders & Billing',
-            '/create-bill': 'Create Bill',
-            '/admin/grouped-bill': 'Grouped Billing',
-            '/grouped-bill': 'Batch Billing'
+            '/work-orders-list': 'Work Orders & Billing'
         };
         return pathMap[path] || 'Dashboard';
     };

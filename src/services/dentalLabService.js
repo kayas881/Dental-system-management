@@ -81,8 +81,6 @@ const createWorkOrder = async (workOrderData) => {
         const cleanedData = {
             ...workOrderData,
             created_by: validUserId,
-            trial_date_1: workOrderData.trial_date_1 === '' ? null : workOrderData.trial_date_1,
-            trial_date_2: workOrderData.trial_date_2 === '' ? null : workOrderData.trial_date_2,
             completion_date: workOrderData.completion_date === '' ? null : workOrderData.completion_date,
             expected_complete_date: workOrderData.expected_complete_date === '' ? null : workOrderData.expected_complete_date,
             feedback: workOrderData.feedback === '' ? null : workOrderData.feedback
@@ -139,8 +137,6 @@ const updateWorkOrder = async (id, updates) => {
         // Clean up empty date strings - convert to null for database
         const cleanedUpdates = { ...updates };
         
-        if (cleanedUpdates.trial_date_1 === '') cleanedUpdates.trial_date_1 = null;
-        if (cleanedUpdates.trial_date_2 === '') cleanedUpdates.trial_date_2 = null;
         if (cleanedUpdates.completion_date === '') cleanedUpdates.completion_date = null;
         if (cleanedUpdates.expected_complete_date === '') cleanedUpdates.expected_complete_date = null;
         if (cleanedUpdates.feedback === '') cleanedUpdates.feedback = null;
@@ -195,22 +191,21 @@ const getWorkOrder = async (workOrderId) => {
 // Check if work order has existing bill
 const checkWorkOrderHasBill = async (workOrderId) => {
     try {
-        // Check for regular bills (individual work orders)
-        const { data: regularBill, error: regularError } = await supabase
+        // 🔁 Just get all bills for this work order (not limited to 1)
+        const { data: regularBills, error: regularError } = await supabase
             .from('bills')
             .select('id, status, bill_date')
-            .eq('work_order_id', workOrderId)
-            .maybeSingle();
+            .eq('work_order_id', workOrderId);
 
         if (regularError) {
             console.error('Error checking regular bill for work order:', workOrderId, regularError);
             throw regularError;
         }
 
-        if (regularBill) {
+        if (regularBills && regularBills.length > 0) {
             return { 
                 hasBill: true, 
-                data: regularBill, 
+                data: regularBills[0], // take the first for display
                 billType: 'individual' 
             };
         }
@@ -248,6 +243,7 @@ const checkWorkOrderHasBill = async (workOrderId) => {
     }
 };
 
+
 // Bills Management
 const createBill = async (billData) => {
     try {
@@ -266,9 +262,7 @@ const createBill = async (billData) => {
             created_by: userId,
             completion_date: billData.completion_date === '' ? null : billData.completion_date,
             bill_date: billData.bill_date === '' ? null : billData.bill_date,
-            notes: billData.notes === '' ? null : billData.notes,
-            // Ensure tooth_numbers is properly formatted as an array
-            tooth_numbers: Array.isArray(billData.tooth_numbers) ? billData.tooth_numbers : []
+            notes: billData.notes === '' ? null : billData.notes
         };
 
         console.log('Cleaned bill data:', cleanedData);
@@ -620,7 +614,7 @@ const getBillsByDateRange = async (startDate, endDate) => {
         
         const selectFields = userRole === 'ADMIN' 
             ? '*' 
-            : 'id, work_order_id, doctor_name, work_description, serial_number, completion_date, bill_date, status, created_at, updated_at';
+            : 'id, work_order_id, doctor_name, patient_name, work_description, serial_number, completion_date, bill_date, status, created_at, updated_at, tooth_numbers, notes';
         
         const { data, error } = await supabase
             .from('bills')
@@ -1160,6 +1154,250 @@ const getMonthlyBillsStats = async () => {
     }
 };
 
+// Return/Revision System
+const returnWorkOrder = async (workOrderId, returnData) => {
+    try {
+        const userId = await authService.getUserId();
+        console.log('Returning work order:', { workOrderId, returnData, userId });
+
+        if (!userId) {
+            throw new Error('User not authenticated');
+        }
+
+        // Call the database function to handle the return
+        const { data, error } = await supabase.rpc('handle_work_order_return', {
+            p_work_order_id: workOrderId,
+            p_return_reason: returnData.reason,
+            p_revision_notes: returnData.notes || null,
+            p_new_expected_date: returnData.expectedDate || null,
+            p_user_id: userId
+        });
+
+        if (error) {
+            console.error('Error returning work order:', error);
+            throw error;
+        }
+
+        console.log('Work order returned successfully:', data);
+        
+        // Check if the database function returned success
+        if (data && data.success === false) {
+            throw new Error(data.error || 'Database function returned failure');
+        }
+        
+        return { success: true, data };
+    } catch (error) {
+        console.error('Error in returnWorkOrder:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+const completeRevision = async (workOrderId, completionDate = null) => {
+    try {
+        const userId = await authService.getUserId();
+        console.log('Completing revision:', { workOrderId, completionDate, userId });
+
+        if (!userId) {
+            throw new Error('User not authenticated');
+        }
+
+        // Call the database function to complete the revision
+        const { data, error } = await supabase.rpc('complete_work_order_revision', {
+            p_work_order_id: workOrderId,
+            p_completion_date: completionDate || new Date().toISOString().split('T')[0],
+            p_user_id: userId
+        });
+
+        if (error) {
+            console.error('Error completing revision:', error);
+            throw error;
+        }
+
+        console.log('Revision completed successfully:', data);
+        
+        // Check if the database function returned success
+        if (data && data.success === false) {
+            throw new Error(data.error || 'Database function returned failure');
+        }
+        
+        return { success: true, data };
+    } catch (error) {
+        console.error('Error in completeRevision:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+const getRevisionHistory = async (workOrderId) => {
+    try {
+        const { data, error } = await supabase
+            .from('revision_history')
+            .select(`
+                *,
+                returned_by_user:returned_by(
+                    id,
+                    email
+                )
+            `)
+            .eq('work_order_id', workOrderId)
+            .order('revision_number', { ascending: true });
+
+        if (error) {
+            console.error('Error fetching revision history:', error);
+            throw error;
+        }
+
+        return { success: true, data: data || [] };
+    } catch (error) {
+        console.error('Error in getRevisionHistory:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+const getRevisionAnalytics = async () => {
+    try {
+        const { data, error } = await supabase
+            .from('work_order_revision_analytics')
+            .select('*')
+            .order('revision_percentage', { ascending: false });
+
+        if (error) {
+            console.error('Error fetching revision analytics:', error);
+            throw error;
+        }
+
+        return { success: true, data: data || [] };
+    } catch (error) {
+        console.error('Error in getRevisionAnalytics:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+// Get work orders that need revision (returned status)
+const getWorkOrdersNeedingRevision = async () => {
+    try {
+        const { data, error } = await supabase
+            .from('work_orders')
+            .select('*')
+            .in('status', ['returned', 'revision_in_progress'])
+            .order('return_date', { ascending: true });
+
+        if (error) {
+            console.error('Error fetching work orders needing revision:', error);
+            throw error;
+        }
+
+        return { success: true, data: data || [] };
+    } catch (error) {
+        console.error('Error in getWorkOrdersNeedingRevision:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+// Trial Management
+const createTrial = async (trialData) => {
+    try {
+        const userId = await authService.getUserId();
+        console.log('Creating trial:', { trialData, userId });
+
+        if (!userId) {
+            throw new Error('User not authenticated');
+        }
+
+        const { data, error } = await supabase
+            .from('trials')
+            .insert([trialData])
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Error creating trial:', error);
+            throw error;
+        }
+
+        return { success: true, data };
+    } catch (error) {
+        console.error('Error in createTrial:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+const getTrialsByWorkOrder = async (workOrderId) => {
+    try {
+        const { data, error } = await supabase
+            .from('trials')
+            .select('*')
+            .eq('work_order_id', workOrderId)
+            .order('trial_date', { ascending: true });
+
+        if (error) {
+            console.error('Error fetching trials:', error);
+            throw error;
+        }
+
+        return { success: true, data: data || [] };
+    } catch (error) {
+        console.error('Error in getTrialsByWorkOrder:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+const updateTrial = async (trialId, trialData) => {
+    try {
+        const userId = await authService.getUserId();
+        console.log('Updating trial:', { trialId, trialData, userId });
+
+        if (!userId) {
+            throw new Error('User not authenticated');
+        }
+
+        const { data, error } = await supabase
+            .from('trials')
+            .update(trialData)
+            .eq('id', trialId)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Error updating trial:', error);
+            throw error;
+        }
+
+        return { success: true, data };
+    } catch (error) {
+        console.error('Error in updateTrial:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+const deleteTrial = async (trialId) => {
+    try {
+        const userId = await authService.getUserId();
+        console.log('Deleting trial:', { trialId, userId });
+
+        if (!userId) {
+            throw new Error('User not authenticated');
+        }
+
+        const { data, error } = await supabase
+            .from('trials')
+            .delete()
+            .eq('id', trialId)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Error deleting trial:', error);
+            throw error;
+        }
+
+        return { success: true, data };
+    } catch (error) {
+        console.error('Error in deleteTrial:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+// Validation Helpers
 export const dentalLabService = {
     // Work Orders
     createWorkOrder,
@@ -1172,6 +1410,7 @@ export const dentalLabService = {
     getWorkOrdersWithBatchInfo,
     getBatchWorkOrders,
     canBatchBeBilled,
+    completeRevision,
     
     // Bills
     createBill,
@@ -1277,6 +1516,7 @@ export const dentalLabService = {
         }
     },
 
+    
     regenerateMonthlyBill: async (billId) => {
         try {
             const { data, error } = await supabase
@@ -1327,7 +1567,253 @@ export const dentalLabService = {
         }
     },
 
-    // Validation Helpers
-    validatePatientToothSelection,
-    formatPatientToothSummary
+    // Return/Revision System
+      returnWorkOrder: async (workOrderId, returnData) => {
+        try {
+            const userId = await authService.getUserId();
+            console.log('Returning work order:', { workOrderId, returnData, userId });
+
+            if (!userId) {
+                throw new Error('User not authenticated');
+            }
+
+            // First check if the work order has a bill
+            const billCheck = await dentalLabService.checkWorkOrderHasBill(workOrderId);
+            if (!billCheck.hasBill) {
+                throw new Error('Cannot return work order that has not been billed yet. Please create a bill first.');
+            }
+
+            // Call the database function to handle the return
+            const { data, error } = await supabase.rpc('handle_work_order_return', {
+                p_work_order_id: workOrderId,
+                p_return_reason: returnData.reason,
+                p_revision_notes: returnData.notes || null,
+                p_new_expected_date: returnData.expectedDate || null,
+                p_user_id: userId
+            });
+
+            if (error) {
+                console.error('Error returning work order:', error);
+                throw error;
+            }
+
+            console.log('Work order returned successfully:', data);
+            
+            // Check if the database function returned success
+            if (data && data.success === false) {
+                throw new Error(data.error || 'Database function returned failure');
+            }
+            
+            return { success: true, data };
+        } catch (error) {
+            console.error('Error in returnWorkOrder:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
+
+completeRevision: async (workOrderId, completionDate = null) => {
+        try {
+            const userId = await authService.getUserId();
+            console.log('Completing revision:', { workOrderId, completionDate, userId });
+
+            if (!userId) {
+                throw new Error('User not authenticated');
+            }
+
+            // Call the database function to complete the revision
+            const { data, error } = await supabase.rpc('complete_work_order_revision', {
+                p_work_order_id: workOrderId,
+                p_completion_date: completionDate || new Date().toISOString().split('T')[0],
+                p_user_id: userId
+            });
+
+            if (error) {
+                console.error('Error completing revision:', error);
+                throw error;
+            }
+
+            console.log('Revision completed successfully:', data);
+            
+            // Check if the database function returned success
+            if (data && data.success === false) {
+                throw new Error(data.error || 'Database function returned failure');
+            }
+            
+            return { success: true, data };
+        } catch (error) {
+            console.error('Error in completeRevision:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    getRevisionHistory: async (workOrderId) => {
+        try {
+            const { data, error } = await supabase
+                .from('revision_history')
+                .select(`
+                    *,
+                    returned_by_user:returned_by(
+                        id,
+                        email
+                    )
+                `)
+                .eq('work_order_id', workOrderId)
+                .order('revision_number', { ascending: true });
+
+            if (error) {
+                console.error('Error fetching revision history:', error);
+                throw error;
+            }
+
+            return { success: true, data: data || [] };
+        } catch (error) {
+            console.error('Error in getRevisionHistory:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    getRevisionAnalytics: async () => {
+        try {
+            const { data, error } = await supabase
+                .from('work_order_revision_analytics')
+                .select('*')
+                .order('revision_percentage', { ascending: false });
+
+            if (error) {
+                console.error('Error fetching revision analytics:', error);
+                throw error;
+            }
+
+            return { success: true, data: data || [] };
+        } catch (error) {
+            console.error('Error in getRevisionAnalytics:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    // Get work orders that need revision (returned status)
+    getWorkOrdersNeedingRevision: async () => {
+        try {
+            const { data, error } = await supabase
+                .from('work_orders')
+                .select('*')
+                .in('status', ['returned', 'revision_in_progress'])
+                .order('return_date', { ascending: true });
+
+            if (error) {
+                console.error('Error fetching work orders needing revision:', error);
+                throw error;
+            }
+
+            return { success: true, data: data || [] };
+        } catch (error) {
+            console.error('Error in getWorkOrdersNeedingRevision:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    // Trial Management
+    createTrial: async (trialData) => {
+        try {
+            const userId = await authService.getUserId();
+            console.log('Creating trial:', { trialData, userId });
+
+            if (!userId) {
+                throw new Error('User not authenticated');
+            }
+
+            const { data, error } = await supabase
+                .from('trials')
+                .insert([trialData])
+                .select()
+                .single();
+
+            if (error) {
+                console.error('Error creating trial:', error);
+                throw error;
+            }
+
+            return { success: true, data };
+        } catch (error) {
+            console.error('Error in createTrial:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    getTrialsByWorkOrder: async (workOrderId) => {
+        try {
+            const { data, error } = await supabase
+                .from('trials')
+                .select('*')
+                .eq('work_order_id', workOrderId)
+                .order('trial_date', { ascending: true });
+
+            if (error) {
+                console.error('Error fetching trials:', error);
+                throw error;
+            }
+
+            return { success: true, data: data || [] };
+        } catch (error) {
+            console.error('Error in getTrialsByWorkOrder:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    updateTrial: async (trialId, trialData) => {
+        try {
+            const userId = await authService.getUserId();
+            console.log('Updating trial:', { trialId, trialData, userId });
+
+            if (!userId) {
+                throw new Error('User not authenticated');
+            }
+
+            const { data, error } = await supabase
+                .from('trials')
+                .update(trialData)
+                .eq('id', trialId)
+                .select()
+                .single();
+
+            if (error) {
+                console.error('Error updating trial:', error);
+                throw error;
+            }
+
+            return { success: true, data };
+        } catch (error) {
+            console.error('Error in updateTrial:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    deleteTrial: async (trialId) => {
+        try {
+            const userId = await authService.getUserId();
+            console.log('Deleting trial:', { trialId, userId });
+
+            if (!userId) {
+                throw new Error('User not authenticated');
+            }
+
+            const { data, error } = await supabase
+                .from('trials')
+                .delete()
+                .eq('id', trialId)
+                .select()
+                .single();
+
+            if (error) {
+                console.error('Error deleting trial:', error);
+                throw error;
+            }
+
+            return { success: true, data };
+        } catch (error) {
+            console.error('Error in deleteTrial:', error);
+            return { success: false, error: error.message };
+        }
+    }
 };

@@ -64,17 +64,26 @@ const DiagnosticPage = () => {
         setLoading(false);
     };
 
-    const testBillCreation = (order) => {
-        console.log('Testing bill creation for order:', order);
+    const testBillCreation = async (order) => {
+        console.log('Testing direct bill creation for order:', order);
         setSelectedOrder(order);
         
-        // Test navigation
-        navigate('/create-bill', { 
-            state: { 
-                workOrder: order,
-                testMode: true
-            } 
-        });
+        try {
+            setMessage('Testing direct bill creation...');
+            
+            // Test direct bill creation API call
+            const result = await dentalLabService.createGroupedBill([order]);
+            
+            if (result.success) {
+                setMessage(`✅ Bill creation test successful! Bill ID: ${result.data?.id}`);
+                console.log('Bill creation test result:', result);
+            } else {
+                setMessage(`❌ Bill creation test failed: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('Bill creation test error:', error);
+            setMessage(`❌ Bill creation test error: ${error.message}`);
+        }
     };
 
     return (

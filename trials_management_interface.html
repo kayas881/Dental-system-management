@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Work Order Trials Management</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .work-order-section {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+        }
+        .trials-section {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            background-color: white;
+        }
+        .trial-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #f5f5f5;
+        }
+        .trial-info {
+            flex-grow: 1;
+        }
+        .trial-name {
+            font-weight: bold;
+            color: #333;
+        }
+        .trial-date {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .trial-notes {
+            color: #777;
+            font-size: 0.8em;
+            font-style: italic;
+        }
+        .trial-actions {
+            display: flex;
+            gap: 5px;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+        .btn:hover {
+            opacity: 0.8;
+        }
+        .trial-form {
+            display: none;
+            margin-top: 15px;
+            padding: 15px;
+            border: 2px solid #007bff;
+            border-radius: 6px;
+            background-color: #f8f9fa;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .form-group textarea {
+            resize: vertical;
+            height: 60px;
+        }
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        .no-trials {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            padding: 20px;
+        }
+        .work-order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .work-order-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .info-item {
+            padding: 5px 0;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <h1>Work Order Trials Management</h1>
+    
+    <!-- Sample Work Order -->
+    <div class="work-order-section">
+        <div class="work-order-header">
+            <h2>Work Order #WO-12345</h2>
+            <span class="badge">In Progress</span>
+        </div>
+        
+        <div class="work-order-info">
+            <div class="info-item">
+                <span class="info-label">Doctor:</span> Dr. Smith
+            </div>
+            <div class="info-item">
+                <span class="info-label">Patient:</span> John Doe
+            </div>
+            <div class="info-item">
+                <span class="info-label">Product:</span> Premium Crown
+            </div>
+            <div class="info-item">
+                <span class="info-label">Shade:</span> A2
+            </div>
+            <div class="info-item">
+                <span class="info-label">Serial:</span> SN-2025-001
+            </div>
+            <div class="info-item">
+                <span class="info-label">Order Date:</span> 2025-01-10
+            </div>
+        </div>
+
+        <!-- Trials Section -->
+        <div class="trials-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3>Trials</h3>
+                <button class="btn btn-primary" onclick="showAddTrialForm()">+ Add Trial</button>
+            </div>
+
+            <!-- Add Trial Form (initially hidden) -->
+            <div id="addTrialForm" class="trial-form">
+                <h4>Add New Trial</h4>
+                <div class="form-group">
+                    <label for="trialName">Trial Name:</label>
+                    <input type="text" id="trialName" placeholder="e.g., Initial Fitting, Color Match Trial, Final Check">
+                </div>
+                <div class="form-group">
+                    <label for="trialDate">Trial Date:</label>
+                    <input type="date" id="trialDate">
+                </div>
+                <div class="form-group">
+                    <label for="trialNotes">Notes (Optional):</label>
+                    <textarea id="trialNotes" placeholder="Any specific notes about this trial..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-secondary" onclick="hideAddTrialForm()">Cancel</button>
+                    <button class="btn btn-success" onclick="addTrial()">Save Trial</button>
+                </div>
+            </div>
+
+            <!-- Trials List -->
+            <div id="trialsList">
+                <!-- Existing trials will be displayed here -->
+                <div class="trial-item">
+                    <div class="trial-info">
+                        <div class="trial-name">Initial Fitting Trial</div>
+                        <div class="trial-date">📅 January 15, 2025</div>
+                        <div class="trial-notes">First fitting to check basic comfort and alignment</div>
+                    </div>
+                    <div class="trial-actions">
+                        <button class="btn btn-secondary" onclick="editTrial(1)">Edit</button>
+                        <button class="btn btn-danger" onclick="deleteTrial(1)">Delete</button>
+                    </div>
+                </div>
+
+                <div class="trial-item">
+                    <div class="trial-info">
+                        <div class="trial-name">Color Match Verification</div>
+                        <div class="trial-date">📅 January 18, 2025</div>
+                        <div class="trial-notes">Checking shade matching with adjacent teeth</div>
+                    </div>
+                    <div class="trial-actions">
+                        <button class="btn btn-secondary" onclick="editTrial(2)">Edit</button>
+                        <button class="btn btn-danger" onclick="deleteTrial(2)">Delete</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample trials data (in real app, this would come from the database)
+        let trials = [
+            {
+                id: 1,
+                name: "Initial Fitting Trial",
+                date: "2025-01-15",
+                notes: "First fitting to check basic comfort and alignment"
+            },
+            {
+                id: 2,
+                name: "Color Match Verification",
+                date: "2025-01-18",
+                notes: "Checking shade matching with adjacent teeth"
+            }
+        ];
+
+        function showAddTrialForm() {
+            document.getElementById('addTrialForm').style.display = 'block';
+            // Set default date to today
+            document.getElementById('trialDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('trialName').focus();
+        }
+
+        function hideAddTrialForm() {
+            document.getElementById('addTrialForm').style.display = 'none';
+            // Clear form
+            document.getElementById('trialName').value = '';
+            document.getElementById('trialDate').value = '';
+            document.getElementById('trialNotes').value = '';
+        }
+
+        function addTrial() {
+            const trialName = document.getElementById('trialName').value.trim();
+            const trialDate = document.getElementById('trialDate').value;
+            const trialNotes = document.getElementById('trialNotes').value.trim();
+
+            if (!trialName || !trialDate) {
+                alert('Please enter both trial name and date.');
+                return;
+            }
+
+            // In real application, this would call your API
+            // Example API call:
+            /*
+            const response = await supabase.rpc('add_work_order_trial', {
+                p_work_order_id: workOrderId,
+                p_trial_name: trialName,
+                p_trial_date: trialDate,
+                p_notes: trialNotes || null
+            });
+            */
+
+            // For demo purposes, add to local array
+            const newTrial = {
+                id: trials.length + 1,
+                name: trialName,
+                date: trialDate,
+                notes: trialNotes
+            };
+            trials.push(newTrial);
+
+            // Update the display
+            renderTrials();
+            hideAddTrialForm();
+            
+            alert('Trial added successfully!');
+        }
+
+        function editTrial(trialId) {
+            const trial = trials.find(t => t.id === trialId);
+            if (!trial) return;
+
+            // In a real app, you'd show an edit form similar to add form
+            const newName = prompt('Edit trial name:', trial.name);
+            const newDate = prompt('Edit trial date (YYYY-MM-DD):', trial.date);
+            
+            if (newName && newDate) {
+                trial.name = newName;
+                trial.date = newDate;
+                
+                // In real application:
+                /*
+                const response = await supabase.rpc('update_work_order_trial', {
+                    p_trial_id: trialId,
+                    p_trial_name: newName,
+                    p_trial_date: newDate
+                });
+                */
+                
+                renderTrials();
+                alert('Trial updated successfully!');
+            }
+        }
+
+        function deleteTrial(trialId) {
+            if (confirm('Are you sure you want to delete this trial?')) {
+                trials = trials.filter(t => t.id !== trialId);
+                
+                // In real application:
+                /*
+                const response = await supabase.rpc('delete_work_order_trial', {
+                    p_trial_id: trialId
+                });
+                */
+                
+                renderTrials();
+                alert('Trial deleted successfully!');
+            }
+        }
+
+        function renderTrials() {
+            const trialsList = document.getElementById('trialsList');
+            
+            if (trials.length === 0) {
+                trialsList.innerHTML = '<div class="no-trials">No trials added yet. Click "Add Trial" to create the first trial.</div>';
+                return;
+            }
+
+            trialsList.innerHTML = trials.map(trial => `
+                <div class="trial-item">
+                    <div class="trial-info">
+                        <div class="trial-name">${trial.name}</div>
+                        <div class="trial-date">📅 ${formatDate(trial.date)}</div>
+                        ${trial.notes ? `<div class="trial-notes">${trial.notes}</div>` : ''}
+                    </div>
+                    <div class="trial-actions">
+                        <button class="btn btn-secondary" onclick="editTrial(${trial.id})">Edit</button>
+                        <button class="btn btn-danger" onclick="deleteTrial(${trial.id})">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+        }
+
+        // Initial render
+        renderTrials();
+    </script>
+</body>
+</html>

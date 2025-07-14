@@ -229,7 +229,7 @@
 
 .simple-chart {
     display: flex;
-    align-items: end;
+    align-items: flex-end;
     gap: 4px;
     height: 200px;
     padding: 20px 0;

@@ -100,7 +100,7 @@ const ItemizedBillPricingPage = () => {
             if (response.data) {
                 setMessage('Bill pricing finalized successfully!');
                 setTimeout(() => {
-                    navigate('/admin/bills-management');
+                    navigate('/admin/monthly-billing');
                 }, 2000);
             } else {
                 setMessage('Error finalizing bill: ' + response.error);
@@ -125,8 +125,8 @@ const ItemizedBillPricingPage = () => {
                     </div>
                 )}
                 <p>Bill ID: {billId}</p>
-                <button onClick={() => navigate('/admin/bills-management')} className="back-btn">
-                    ← Back to Bills Management
+                <button onClick={() => navigate('/admin/monthly-billing')} className="back-btn">
+                    ← Back to Monthly Billing
                 </button>
             </div>
         );
@@ -136,8 +136,8 @@ const ItemizedBillPricingPage = () => {
         <div className="itemized-pricing-page">
             <div className="page-header">
                 <h2>Itemized Bill Pricing</h2>
-                <button onClick={() => navigate('/admin/bills-management')} className="back-btn">
-                    ← Back to Bills Management
+                <button onClick={() => navigate('/admin/monthly-billing')} className="back-btn">
+                    ← Back to Monthly Billing
                 </button>
             </div>
 
@@ -290,7 +290,7 @@ const ItemizedBillPricingPage = () => {
                         {loading ? 'Finalizing...' : 'Finalize Bill Pricing'}
                     </button>
                     <button 
-                        onClick={() => navigate('/admin/bills-management')}
+                        onClick={() => navigate('/admin/monthly-billing')}
                         className="cancel-btn"
                     >
                         Cancel

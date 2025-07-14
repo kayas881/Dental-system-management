@@ -27,11 +27,23 @@ const WorkOrdersList = () => {
     const [completionDate, setCompletionDate] = useState('');
     const [editingOrder, setEditingOrder] = useState(null);
     const [editData, setEditData] = useState({
-        trial_date_1: '',
-        trial_date_2: '',
         feedback: ''
     });
-    
+    const [workOrderTrials, setWorkOrderTrials] = useState({}); // Store trials per work order ID
+    const [showTrialForm, setShowTrialForm] = useState({}); // Store trial form visibility per work order ID
+    const [newTrial, setNewTrial] = useState({
+        trial_name: '',
+        trial_date: ''
+    });
+    //return revision history state
+    const [returningOrder, setReturningOrder] = useState(null);
+    const [returnData, setReturnData] = useState({
+        reason: '',
+        notes: '',
+        expectedDate: ''
+    });
+    const [showRevisionHistory, setShowRevisionHistory] = useState(null);
+    const [revisionHistory, setRevisionHistory] = useState([]);
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(25);
@@ -188,10 +200,10 @@ const WorkOrdersList = () => {
     const handleEditOrder = (order) => {
         setEditingOrder(order.id);
         setEditData({
-            trial_date_1: order.trial_date_1 || '',
-            trial_date_2: order.trial_date_2 || '',
             feedback: order.feedback || ''
         });
+        // Load trials for this work order when editing
+        loadTrialsForWorkOrder(order.id);
     };
 
     const handleSaveEdit = async (orderId) => {
@@ -201,7 +213,7 @@ const WorkOrdersList = () => {
         if (response.data) {
             setMessage('Work order updated successfully!');
             setEditingOrder(null);
-            setEditData({ trial_date_1: '', trial_date_2: '', feedback: '' });
+            setEditData({ feedback: '' });
             loadWorkOrders();
         } else {
             setMessage('Error updating work order');
@@ -210,8 +222,13 @@ const WorkOrdersList = () => {
     };
 
     const handleCancelEdit = () => {
+        // Reset trial form state for the current editing order
+        if (editingOrder) {
+            setShowTrialForm(prev => ({ ...prev, [editingOrder]: false }));
+        }
         setEditingOrder(null);
-        setEditData({ trial_date_1: '', trial_date_2: '', feedback: '' });
+        setEditData({ feedback: '' });
+        setNewTrial({ trial_name: '', trial_date: '' });
     };
 
     const handleEditInputChange = (e) => {
@@ -228,15 +245,16 @@ const WorkOrdersList = () => {
         return isCompleted && !alreadyHasBill;
     };
 
-    const handleCreateBill = (order) => {
-        console.log('=== BILL CREATION DEBUG ===');
-        console.log('handleCreateBill called with order:', order);
+    const handleCreateBill = async (order) => {
+        console.log('=== INDIVIDUAL BILL CREATION ===');
+        console.log('Creating bill for order:', order);
         console.log('Order ID:', order?.id);
         console.log('Order serial:', order?.serial_number);
         console.log('Order status:', order?.status);
-        console.log('Order completion_date:', order?.completion_date);
-        console.log('Can create bill:', canCreateBill(order));
-        console.log('Bill status for this order:', billStatus[order?.id]);
+        console.log('Order tooth_numbers RAW:', order?.tooth_numbers);
+        console.log('Order tooth_numbers type:', typeof order?.tooth_numbers);
+        console.log('Order tooth_numbers is array:', Array.isArray(order?.tooth_numbers));
+        console.log('Order tooth_numbers length:', order?.tooth_numbers?.length);
         console.log('================================');
         
         // Validate order data
@@ -269,25 +287,77 @@ const WorkOrdersList = () => {
             return;
         }
 
-        console.log('SUCCESS: Proceeding with navigation to create-bill page');
-        console.log('Navigation state will contain:', { workOrder: order });
+        // Create the bill directly
+        setLoading(true);
+        setMessage('Creating bill...');
 
         try {
-            // Use both URL parameter AND navigation state for maximum compatibility
-            navigate(`/create-bill?workOrderId=${order.id}`, { 
-                state: { 
-                    workOrder: order,
-                    onBillCreated: () => {
-                        // Refresh bill status when coming back
-                        checkBillStatusForOrders(workOrders);
-                    }
-                } 
-            });
-            console.log('Navigation called successfully with URL param and state');
+            // Prepare bill data for individual order (using correct bill table schema)
+            const billData = {
+                work_order_id: order.id,
+                doctor_name: order.doctor_name,
+                patient_name: order.patient_name, // Include patient name for printing
+                work_description: `${order.product_quality} - ${order.product_shade} for ${order.patient_name}`,
+                serial_number: order.serial_number,
+                tooth_numbers: order.tooth_numbers, // Include tooth numbers for quadrant display
+                completion_date: order.completion_date,
+                bill_date: new Date().toISOString().split('T')[0],
+                notes: `Individual bill for work order ${order.serial_number}`,
+                status: 'pending'
+            };
+
+            console.log('Creating individual bill with data:', billData);
+            console.log('Order tooth_numbers format:', typeof order.tooth_numbers, order.tooth_numbers);
+            console.log('Bill tooth_numbers format:', typeof billData.tooth_numbers, billData.tooth_numbers);
+            
+            // Ensure tooth_numbers is properly formatted as array
+            let processedToothNumbers = order.tooth_numbers;
+            if (typeof processedToothNumbers === 'string') {
+                try {
+                    processedToothNumbers = JSON.parse(processedToothNumbers);
+                } catch (e) {
+                    console.warn('Failed to parse tooth_numbers string:', processedToothNumbers);
+                    processedToothNumbers = [];
+                }
+            }
+            if (!Array.isArray(processedToothNumbers)) {
+                processedToothNumbers = processedToothNumbers ? [processedToothNumbers] : [];
+            }
+            
+            // Fallback: If no tooth numbers but we have product info, provide a generic display
+            if (processedToothNumbers.length === 0 && order.product_quality) {
+                console.log('No tooth numbers found, using fallback display');
+                // Don't add fake tooth numbers, just leave empty for now
+                // The print template will handle empty arrays gracefully
+            }
+            
+            console.log('Processed tooth_numbers for bill:', processedToothNumbers);
+            
+            // Update billData with processed tooth_numbers
+            billData.tooth_numbers = processedToothNumbers;
+
+            // Create the bill using the service
+            const response = await dentalLabService.createBill(billData);
+            
+            if (response.data) {
+                setMessage(`✅ Bill created successfully for work order ${order.serial_number}`);
+                
+                // Refresh data to update bill status
+                loadWorkOrders();
+                
+                // Show success message for a bit longer
+                setTimeout(() => setMessage(''), 5000);
+                
+            } else {
+                console.error('Error creating bill:', response.error);
+                setMessage('❌ Error creating bill: ' + (response.error?.message || 'Unknown error'));
+            }
         } catch (error) {
-            console.error('ERROR: Navigation failed:', error);
-            setMessage('Error: Failed to navigate to bill creation page.');
+            console.error('Error in handleCreateBill:', error);
+            setMessage('❌ Error creating bill: ' + error.message);
         }
+
+        setLoading(false);
     };
 
     // Batch selection functions
@@ -320,70 +390,83 @@ const WorkOrdersList = () => {
         }
     };
 
-    const handleCreateBatchBill = () => {
+    const handleCreateBatchBill = async () => {
         if (selectedOrders.length === 0) {
-            setMessage('Please select a batch to create a grouped bill.');
+            setMessage('Please select work orders to create a grouped bill.');
             return;
         }
 
         const selectedWorkOrders = workOrders.filter(order => selectedOrders.includes(order.id));
         
-        // Check if all selected orders belong to the same batch
-        const batchIds = [...new Set(selectedWorkOrders.map(order => order.batch_id).filter(Boolean))];
+        // Check if all selected orders are from the same doctor
+        const doctors = [...new Set(selectedWorkOrders.map(order => order.doctor_name))];
         
-        if (batchIds.length === 0) {
-            setMessage('Selected orders were not created as a batch. Only work orders created using "Batch Work Order Entry" can be grouped for billing.');
-            return;
-        }
-        
-        if (batchIds.length > 1) {
-            setMessage('Selected orders belong to different batches. Please select orders from the same batch only.');
+        if (doctors.length > 1) {
+            setMessage(`You can only generate a bill for one doctor at a time. Selected orders are from: ${doctors.join(', ')}`);
             return;
         }
         
         const completedOrders = selectedWorkOrders.filter(order => order.status === 'completed');
 
         if (completedOrders.length === 0) {
-            setMessage('Selected batch orders must be completed before creating a bill.');
+            setMessage('Selected orders must be completed before creating a bill.');
             return;
         }
 
         if (completedOrders.length !== selectedOrders.length) {
-            setMessage(`Only ${completedOrders.length} of ${selectedOrders.length} selected orders are completed. Please complete all batch orders first.`);
+            setMessage(`Only ${completedOrders.length} of ${selectedOrders.length} selected orders are completed. Please complete all orders first.`);
             return;
         }
 
-        // Create batch object for the new grouped billing page
-        const batchId = batchIds[0];
-        const batchOrders = completedOrders.filter(order => order.batch_id === batchId);
-        
-        const batch = {
-            batch_id: batchId,
-            doctor_name: batchOrders[0].doctor_name,
-            order_date: batchOrders[0].order_date,
-            completion_date: batchOrders[0].completion_date,
-            orders: batchOrders,
-            total_items: batchOrders.length,
-            all_teeth: []
-        };
-        
-        // Collect all teeth from batch orders
-        batchOrders.forEach(order => {
-            if (order.tooth_numbers && Array.isArray(order.tooth_numbers)) {
-                batch.all_teeth = [...batch.all_teeth, ...order.tooth_numbers];
-            }
-        });
+        // Check if any selected orders already have bills
+        const ordersWithBills = completedOrders.filter(order => billStatus[order.id]?.hasBill);
+        if (ordersWithBills.length > 0) {
+            setMessage(`${ordersWithBills.length} of the selected orders already have bills. Please select only unbilled orders.`);
+            return;
+        }
 
-        // Navigate to batch bill creation
-        navigate('/grouped-bill', { 
-            state: { 
-                batch: batch,
-                onBillCreated: () => {
-                    setSelectedOrders([]);
-                    loadWorkOrders();
-                }
+        // Create the grouped bill directly
+        setLoading(true);
+        setMessage('Creating grouped bill...');
+
+        try {
+            const doctorName = doctors[0];
+            
+            // Prepare bill data
+            const billData = {
+                doctor_name: doctorName,
+                bill_date: new Date().toISOString().split('T')[0],
+                work_order_ids: completedOrders.map(order => order.id),
+                notes: `Grouped bill for ${completedOrders.length} work orders`,
+                is_grouped: true,
+                grouped_orders_count: completedOrders.length
+            };
+
+            console.log('Creating grouped bill with data:', billData);
+
+            // Create the bill using the service
+            const response = await dentalLabService.createGroupedBill(billData);
+            
+            if (response.data) {
+                setMessage(`✅ Grouped bill created successfully for Dr. ${doctorName} (${completedOrders.length} orders)`);
+                
+                // Clear selection and refresh data
+                setSelectedOrders([]);
+                loadWorkOrders(); // This will refresh the bill status for all orders
+                
+                // Show success message for a bit longer
+                setTimeout(() => setMessage(''), 5000);
+                
+            } else {
+                console.error('Error creating grouped bill:', response.error);
+                setMessage('❌ Error creating grouped bill: ' + (response.error?.message || 'Unknown error'));
             }
-        });
+        } catch (error) {
+            console.error('Error in handleCreateBatchBill:', error);
+            setMessage('❌ Error creating grouped bill: ' + error.message);
+        }
+
+        setLoading(false);
     };
 
     const clearSelection = () => {
@@ -544,9 +627,17 @@ const WorkOrdersList = () => {
         // Trial required filter
         if (currentFilters.trialRequired !== 'all') {
             if (currentFilters.trialRequired === 'yes') {
-                filtered = filtered.filter(order => order.requires_trial || order.trial_date_1 || order.trial_date_2);
+                filtered = filtered.filter(order => {
+                    // Check if order requires trial OR has existing trials
+                    const hasTrials = workOrderTrials[order.id] && workOrderTrials[order.id].length > 0;
+                    return order.requires_trial || hasTrials;
+                });
             } else if (currentFilters.trialRequired === 'no') {
-                filtered = filtered.filter(order => !order.requires_trial && !order.trial_date_1 && !order.trial_date_2);
+                filtered = filtered.filter(order => {
+                    // Check if order doesn't require trial AND has no existing trials
+                    const hasTrials = workOrderTrials[order.id] && workOrderTrials[order.id].length > 0;
+                    return !order.requires_trial && !hasTrials;
+                });
             }
         }
         
@@ -673,26 +764,189 @@ const WorkOrdersList = () => {
         return () => document.removeEventListener('keydown', handleKeyPress);
     }, [searchQuery, handleSearch]);
 
+    // Load trials for expanded work orders (not just editing) - moved before useEffect
+    const loadTrialsForWorkOrder = useCallback(async (workOrderId) => {
+        try {
+            console.log('Loading trials for work order:', workOrderId);
+            const response = await dentalLabService.getTrialsByWorkOrder(workOrderId);
+            
+            if (response.success) {
+                setWorkOrderTrials(prev => ({
+                    ...prev,
+                    [workOrderId]: response.data || []
+                }));
+            } else {
+                console.error('Error loading trials:', response.error);
+            }
+        } catch (error) {
+            console.error('Error loading trials:', error);
+        }
+    }, []);
+
+    useEffect(() => {
+        // Preload trials for all work orders on initial load
+        const preloadTrials = async () => {
+            for (const order of workOrders) {
+                if (order.id) {
+                    await loadTrialsForWorkOrder(order.id);
+                }
+            }
+        };
+
+        if (workOrders.length > 0) {
+            preloadTrials();
+        }
+    }, [workOrders, loadTrialsForWorkOrder]);
+
+    // Trial Management Functions
+    const handleAddTrial = async () => {
+        if (!newTrial.trial_name.trim() || !newTrial.trial_date) {
+            alert('Please enter both trial name and date');
+            return;
+        }
+
+        try {
+            const trialData = {
+                work_order_id: editingOrder,
+                trial_name: newTrial.trial_name.trim(),
+                trial_date: newTrial.trial_date
+            };
+
+            const response = await dentalLabService.createTrial(trialData);
+            
+            if (response.success) {
+                setMessage('Trial added successfully!');
+                setNewTrial({ trial_name: '', trial_date: '' });
+                setShowTrialForm(prev => ({ ...prev, [editingOrder]: false }));
+                // Reload trials for this work order
+                loadTrialsForWorkOrder(editingOrder);
+            } else {
+                alert('Error adding trial: ' + response.error);
+            }
+        } catch (error) {
+            console.error('Error adding trial:', error);
+            alert('Error adding trial: ' + error.message);
+        }
+    };
+
+    const handleDeleteTrial = async (trialId) => {
+        if (!window.confirm('Are you sure you want to delete this trial?')) return;
+
+        try {
+            const response = await dentalLabService.deleteTrial(trialId);
+            
+            if (response.success) {
+                setMessage('Trial deleted successfully!');
+                // Reload trials for this work order
+                loadTrialsForWorkOrder(editingOrder);
+            } else {
+                alert('Error deleting trial: ' + response.error);
+            }
+        } catch (error) {
+            console.error('Error deleting trial:', error);
+            alert('Error deleting trial: ' + error.message);
+        }
+    };
+
+    const handleTrialInputChange = (e) => {
+        const { name, value } = e.target;
+        setNewTrial(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    // Return/Revision Management Functions
+    const handleReturnOrder = (order) => {
+        setReturningOrder(order);
+        setReturnData({
+            reason: '',
+            notes: '',
+            expectedDate: ''
+        });
+    };
+
+ const handleReturnSubmit = async () => {
+        if (!returnData.reason.trim()) {
+            setMessage('Please provide a reason for returning the order');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const response = await dentalLabService.returnWorkOrder(returningOrder.id, returnData);
+            
+            if (response.success) {
+                setMessage(`Work order ${returningOrder.serial_number} returned for revision successfully`);
+                setReturningOrder(null);
+                setReturnData({ reason: '', notes: '', expectedDate: '' });
+                
+                // Refresh the list and bill status
+                await loadWorkOrders();
+            } else {
+                setMessage('Error returning work order: ' + response.error);
+            }
+        } catch (error) {
+            setMessage('Error returning work order: ' + error.message);
+        }
+        setLoading(false);
+    };
+
+    const handleCompleteRevision = async (orderId) => {
+        if (!completionDate) {
+            setMessage('Please select completion date');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const response = await dentalLabService.completeRevision(orderId, completionDate);
+            
+            if (response.success) {
+                setMessage('Revision completed successfully!');
+                setSelectedOrder(null);
+                setCompletionDate('');
+                loadWorkOrders(); // Refresh the list
+            } else {
+                setMessage('Error completing revision: ' + response.error);
+            }
+        } catch (error) {
+            setMessage('Error completing revision: ' + error.message);
+        }
+        setLoading(false);
+    };
+
+    const loadRevisionHistory = async (workOrderId) => {
+        try {
+            const response = await dentalLabService.getRevisionHistory(workOrderId);
+            if (response.success) {
+                setRevisionHistory(response.data);
+                setShowRevisionHistory(workOrderId);
+            } else {
+                setMessage('Error loading revision history: ' + response.error);
+            }
+        } catch (error) {
+            setMessage('Error loading revision history: ' + error.message);
+        }
+    };
+
+    const handleReturnInputChange = (e) => {
+        const { name, value } = e.target;
+        setReturnData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
     return (
         <div className="container mt-4">
-            {/* Smart Batch Billing Button - Only show if there are batch orders */}
-            {(filteredWorkOrders.filter(o => o.status === 'completed' && !billStatus[o.id]?.hasBill).length > 1 || selectedOrders.length > 1) && (
+            {/* Unified Direct Billing Button - Show if orders are selected */}
+            {selectedOrders.length > 1 && (
                 <div className="position-fixed" style={{bottom: '20px', right: '20px', zIndex: 1050}}>
                     <button 
                         className="btn btn-primary btn-lg rounded-circle shadow-lg"
-                        onClick={() => {
-                            if (selectedOrders.length > 1) {
-                                handleCreateBatchBill();
-                            } else {
-                                navigate('/grouped-bill', { 
-                                    state: { 
-                                        workOrders: filteredWorkOrders.filter(o => o.status === 'completed' && !billStatus[o.id]?.hasBill),
-                                        onBillCreated: loadWorkOrders
-                                    }
-                                });
-                            }
-                        }}
-                        title={selectedOrders.length > 1 ? `Create bill for ${selectedOrders.length} selected batch orders` : `Batch billing for completed orders created together`}
+                        onClick={handleCreateBatchBill}
+                        title={`Create bill directly for ${selectedOrders.length} selected orders`}
                         style={{width: '60px', height: '60px'}}
                     >
                         <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '12px', lineHeight: '1'}}>
@@ -731,33 +985,41 @@ const WorkOrdersList = () => {
                                     {message}
                                 </div>
                             )}
-
-                            {/* Help text for billing */}
+                             {/* Help text for unified billing and returns */}
                             <div className="alert alert-info">
                                 <div className="d-flex justify-content-between align-items-center">
                                     <small>
-                                        <strong>💡 Billing Help:</strong> 
-                                        Select batch orders using checkboxes for batch billing, or use "Create Bill" for individual orders.
+                                        <strong>💡 Workflow:</strong> 
+                                        Select completed work orders to create bills instantly. 
+                                        <span className="text-primary ms-1">
+                                            All selected orders must be from the same doctor.
+                                        </span>
+                                        <span className="text-warning ms-2">
+                                            ↩️ Use return button on billed orders if product needs revision.
+                                        </span>
                                         {Object.keys(batchGroups).length > 0 && (
                                             <span className="ms-2">
-                                                🎯 <strong>Batch orders</strong> can be selected together using the "Batch" buttons.
+                                                🎯 Use "Batch" buttons to quickly select all orders from a batch.
                                             </span>
                                         )}
                                     </small>
-                                    {filteredWorkOrders.filter(o => o.status === 'completed' && !billStatus[o.id]?.hasBill).length > 1 && (
-                                        <button 
-                                            className="btn btn-sm btn-outline-primary"
-                                            onClick={() => navigate('/grouped-bill', { 
-                                                state: { 
-                                                    workOrders: filteredWorkOrders.filter(o => o.status === 'completed' && !billStatus[o.id]?.hasBill),
-                                                    onBillCreated: loadWorkOrders
-                                                }
-                                            })}
-                                            title="Open batch billing for batch orders"
-                                        >
-                                            💰 Open Batch Billing
-                                        </button>
-                                    )}
+                                </div>
+                            </div>
+                            {/* Help text for unified billing */}
+                            <div className="alert alert-info">
+                                <div className="d-flex justify-content-between align-items-center">
+                                    <small>
+                                        <strong>💡 Direct Billing:</strong> 
+                                        Select any completed work orders using checkboxes to create a grouped bill instantly. 
+                                        <span className="text-primary ms-1">
+                                            All selected orders must be from the same doctor.
+                                        </span>
+                                        {Object.keys(batchGroups).length > 0 && (
+                                            <span className="ms-2">
+                                                🎯 Use "Batch" buttons to quickly select all orders from a batch.
+                                            </span>
+                                        )}
+                                    </small>
                                 </div>
                             </div>
 
@@ -858,8 +1120,12 @@ const WorkOrdersList = () => {
                                                             onChange={(e) => handleFilterChange('status', e.target.value)}
                                                         >
                                                             <option value="all">All Status</option>
-                                                            <option value="pending">In Progress</option>
+                                                            <option value="in_progress">In Progress</option>
                                                             <option value="completed">Completed</option>
+                                                            <option value="returned">Returned</option>
+                                                            <option value="revision_in_progress">Revision in Progress</option>
+                                                            <option value="cancelled">Cancelled</option>
+                                                            
                                                         </select>
                                                     </div>
                                                     
@@ -1007,33 +1273,102 @@ const WorkOrdersList = () => {
                                     </button>
                                 </div>
                             ) : (
-                                <WorkOrdersTable 
-                                    filteredWorkOrders={paginatedOrders}
-                                    selectedOrders={selectedOrders}
-                                    setSelectedOrders={setSelectedOrders}
-                                    handleSelectOrder={handleSelectOrder}
-                                    clearSelection={clearSelection}
-                                    billStatus={billStatus}
-                                    refreshBillStatus={() => checkBillStatusForOrders(workOrders)}
-                                    formatDate={formatDate}
-                                    editingOrder={editingOrder}
-                                    editData={editData}
-                                    handleEditInputChange={handleEditInputChange}
-                                    startEdit={handleEditOrder}
-                                    handleSave={handleSaveEdit}
-                                    cancelEdit={handleCancelEdit}
-                                    handleCreateBill={handleCreateBill}
-                                    canCreateBill={canCreateBill}
-                                    selectedOrder={selectedOrder}
-                                    setSelectedOrder={setSelectedOrder}
-                                    completionDate={completionDate}
-                                    setCompletionDate={setCompletionDate}
-                                    handleCompleteOrder={handleCompleteOrder}
-                                    isBatchSelected={isBatchSelected}
-                                    handleSelectBatch={handleSelectBatch}
-                                    isBatchCompleted={isBatchCompleted}
-                                    batchGroups={batchGroups}
-                                />
+                                <>
+                                    <WorkOrdersTable 
+                                        filteredWorkOrders={paginatedOrders}
+                                        selectedOrders={selectedOrders}
+                                        setSelectedOrders={setSelectedOrders}
+                                        handleSelectOrder={handleSelectOrder}
+                                        clearSelection={clearSelection}
+                                        billStatus={billStatus}
+                                        refreshBillStatus={() => checkBillStatusForOrders(workOrders)}
+                                        formatDate={formatDate}
+                                        editingOrder={editingOrder}
+                                        editData={editData}
+                                        handleEditInputChange={handleEditInputChange}
+                                        startEdit={handleEditOrder}
+                                        handleSave={handleSaveEdit}
+                                        cancelEdit={handleCancelEdit}
+                                        handleCreateBill={handleCreateBill}
+                                        canCreateBill={canCreateBill}
+                                        selectedOrder={selectedOrder}
+                                        setSelectedOrder={setSelectedOrder}
+                                        completionDate={completionDate}
+                                        setCompletionDate={setCompletionDate}
+                                        handleCompleteOrder={handleCompleteOrder}
+                                        isBatchSelected={isBatchSelected}
+                                        handleSelectBatch={handleSelectBatch}
+                                        isBatchCompleted={isBatchCompleted}
+                                        batchGroups={batchGroups}   
+                                        handleReturnOrder={handleReturnOrder}
+                                        handleCompleteRevision={handleCompleteRevision}
+                                        loadRevisionHistory={loadRevisionHistory}
+                                        workOrderTrials={workOrderTrials}
+                                        loadTrialsForWorkOrder={loadTrialsForWorkOrder}
+                                        showTrialForm={showTrialForm}
+                                        setShowTrialForm={setShowTrialForm}
+                                        newTrial={newTrial}
+                                        handleTrialInputChange={handleTrialInputChange}
+                                        handleAddTrial={handleAddTrial}
+                                        handleDeleteTrial={handleDeleteTrial}
+                        
+                                    />
+
+                                    {/* Selection Summary */}
+                                    {selectedOrders.length > 0 && (
+                                        <div className="mb-3">
+                                            <div className="card border-primary">
+                                                <div className="card-body py-2">
+                                                    <div className="d-flex justify-content-between align-items-center">
+                                                        <div>
+                                                            <strong className="text-primary">
+                                                                {selectedOrders.length} order{selectedOrders.length > 1 ? 's' : ''} selected
+                                                            </strong>
+                                                            {(() => {
+                                                                const selectedWorkOrders = workOrders.filter(order => selectedOrders.includes(order.id));
+                                                                const doctors = [...new Set(selectedWorkOrders.map(order => order.doctor_name))];
+                                                                
+                                                                if (doctors.length === 1) {
+                                                                    return (
+                                                                        <span className="text-success ms-2">
+                                                                            ✓ All from Dr. {doctors[0]}
+                                                                        </span>
+                                                                    );
+                                                                } else if (doctors.length > 1) {
+                                                                    return (
+                                                                        <span className="text-danger ms-2">
+                                                                            ⚠️ Multiple doctors: {doctors.join(', ')}
+                                                                        </span>
+                                                                    );
+                                                                }
+                                                                return null;
+                                                            })()}
+                                                        </div>
+                                                        <div>
+                                                            <button 
+                                                                className="btn btn-success btn-sm me-2"
+                                                                onClick={handleCreateBatchBill}
+                                                                disabled={(() => {
+                                                                    const selectedWorkOrders = workOrders.filter(order => selectedOrders.includes(order.id));
+                                                                    const doctors = [...new Set(selectedWorkOrders.map(order => order.doctor_name))];
+                                                                    return doctors.length > 1 || selectedWorkOrders.some(order => order.status !== 'completed');
+                                                                })()}
+                                                            >
+                                                                💰 Create Bill Now
+                                                            </button>
+                                                            <button 
+                                                                className="btn btn-outline-secondary btn-sm"
+                                                                onClick={clearSelection}
+                                                            >
+                                                                Clear Selection
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
                             )}
 
                             {/* Pagination Controls */}
@@ -1149,7 +1484,7 @@ const WorkOrdersList = () => {
                                                 className="btn btn-success me-2"
                                                 onClick={handleCreateBatchBill}
                                             >
-                                                💰 Create Batch Bill
+                                                💰 Create Bill Now
                                             </button>
                                             <button
                                                 className="btn btn-outline-secondary"
@@ -1165,6 +1500,176 @@ const WorkOrdersList = () => {
                     </div>
                 </div>
             </div>
+                       {/* Return Order Modal */}
+            {returningOrder && (
+                <div className="modal show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
+                    <div className="modal-dialog">
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h5 className="modal-title">Return Work Order for Revision</h5>
+                                <button
+                                    type="button"
+                                    className="btn-close"
+                                    onClick={() => setReturningOrder(null)}
+                                ></button>
+                            </div>
+                            <div className="modal-body">
+                                <div className="mb-3">
+                                    <strong>Work Order:</strong> {returningOrder.serial_number}<br/>
+                                    <strong>Patient:</strong> {returningOrder.patient_name}<br/>
+                                    <strong>Doctor:</strong> Dr. {returningOrder.doctor_name}
+                                </div>
+                                                                
+                                <div className="alert alert-warning">
+                                    <small>
+                                        <strong>Note:</strong> This work order has been billed and delivered. 
+                                        Returning it will put it back into production for revision.
+                                    </small>
+                                </div>
+                                <div className="mb-3">
+                                    <label className="form-label">Reason for Return <span className="text-danger">*</span></label>
+                                    <select
+                                        className="form-select"
+                                        name="reason"
+                                        value={returnData.reason}
+                                        onChange={handleReturnInputChange}
+                                        required
+                                    >
+                                        <option value="">Select reason...</option>
+                                        <option value="Poor Fit">Poor Fit</option>
+                                        <option value="Color Mismatch">Color Mismatch</option>
+                                        <option value="Incorrect Shape">Incorrect Shape</option>
+                                        <option value="Surface Imperfections">Surface Imperfections</option>
+                                        <option value="Size Issues">Size Issues</option>
+                                        <option value="Material Defect">Material Defect</option>
+                                        <option value="Doctor Request">Doctor's Request for Changes</option>
+                                        <option value="Patient Complaint">Patient Complaint</option>
+                                        <option value="Quality Control">Quality Control Issues</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+
+                                <div className="mb-3">
+                                    <label className="form-label">Revision Notes</label>
+                                    <textarea
+                                        className="form-control"
+                                        name="notes"
+                                        value={returnData.notes}
+                                        onChange={handleReturnInputChange}
+                                        rows={3}
+                                        placeholder="Describe what needs to be revised or improved..."
+                                    />
+                                </div>
+
+                                <div className="mb-3">
+                                    <label className="form-label">New Expected Completion Date</label>
+                                    <input
+                                        type="date"
+                                        className="form-control"
+                                        name="expectedDate"
+                                        value={returnData.expectedDate}
+                                        onChange={handleReturnInputChange}
+                                        min={new Date().toISOString().split('T')[0]}
+                                    />
+                                    <small className="text-muted">Leave empty to keep existing expected date</small>
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary"
+                                    onClick={() => setReturningOrder(null)}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-warning"
+                                    onClick={handleReturnSubmit}
+                                    disabled={!returnData.reason}
+                                >
+                                    Return for Revision
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Revision History Modal */}
+            {showRevisionHistory && (
+                <div className="modal show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
+                    <div className="modal-dialog modal-lg">
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h5 className="modal-title">Revision History</h5>
+                                <button
+                                    type="button"
+                                    className="btn-close"
+                                    onClick={() => setShowRevisionHistory(null)}
+                                ></button>
+                            </div>
+                            <div className="modal-body">
+                                {revisionHistory.length === 0 ? (
+                                    <p className="text-muted">No revision history found for this work order.</p>
+                                ) : (
+                                    <div className="timeline">
+                                        {revisionHistory.map((revision, index) => (
+                                            <div key={revision.id} className="timeline-item mb-3">
+                                                <div className="card">
+                                                    <div className="card-header d-flex justify-content-between align-items-center">
+                                                        <h6 className="mb-0">
+                                                            Revision #{revision.revision_number}
+                                                        </h6>
+                                                        <small className="text-muted">
+                                                            {formatDate(revision.return_date)}
+                                                        </small>
+                                                    </div>
+                                                    <div className="card-body">
+                                                        <div className="row">
+                                                            <div className="col-md-6">
+                                                                <strong>Reason:</strong> {revision.return_reason}<br/>
+                                                                <strong>Returned by:</strong> {revision.returned_by_user?.email || 'Unknown'}
+                                                            </div>
+                                                            <div className="col-md-6">
+                                                                {revision.previous_completion_date && (
+                                                                    <>
+                                                                        <strong>Previous Completion:</strong> {formatDate(revision.previous_completion_date)}<br/>
+                                                                    </>
+                                                                )}
+                                                                {revision.new_expected_completion_date && (
+                                                                    <>
+                                                                        <strong>New Expected Date:</strong> {formatDate(revision.new_expected_completion_date)}
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        {revision.revision_notes && (
+                                                            <div className="mt-2">
+                                                                <strong>Notes:</strong>
+                                                                <p className="text-muted mb-0">{revision.revision_notes}</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            <div className="modal-footer">
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary"
+                                    onClick={() => setShowRevisionHistory(null)}
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

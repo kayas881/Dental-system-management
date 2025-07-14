@@ -149,12 +149,6 @@ const StaffDashboard = () => {
                                                 + Create New Work Order
                                             </button>
                                             <button 
-                                                className="btn btn-info"
-                                                onClick={() => navigate('/batch-work-order')}
-                                            >
-                                                📝 Batch Work Order Entry
-                                            </button>
-                                            <button 
                                                 className="btn btn-outline-primary"
                                                 onClick={() => navigate('/work-orders-list')}
                                             >
@@ -183,22 +177,11 @@ const StaffDashboard = () => {
                                                 className="btn btn-success"
                                                 onClick={() => navigate('/work-orders-list')}
                                             >
-                                                💰 Individual Bills
+                                                💰 Work Orders & Direct Billing
                                             </button>
-                                            <button 
-                                                className="btn btn-primary"
-                                                onClick={() => navigate('/flexible-grouped-bill')}
-                                                title="Group any completed orders from the same doctor into one bill"
-                                            >
-                                                📊 Flexible Grouped Billing
-                                            </button>
-                                            <button 
-                                                className="btn btn-outline-secondary"
-                                                onClick={() => navigate('/grouped-bill')}
-                                                title="Bill work orders that were created as batches"
-                                            >
-                                                📋 Batch Billing Only
-                                            </button>
+                                            <p className="text-muted small mt-2 mb-0">
+                                                Select work orders from the same doctor and create bills directly - no need for separate billing pages!
+                                            </p>
                                         </div>
                                     </div>
                                 </div>

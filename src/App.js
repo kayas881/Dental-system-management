@@ -12,15 +12,11 @@ import AuditLogPage from './pages/admin/AuditLogPage';
 import SystemMonitorPage from './pages/admin/SystemMonitorPage';
 import MonthlyBillingPage from './pages/admin/MonthlyBillingPage';
 
-// Staff pages
-import StaffDashboard from './pages/staff/StaffDashboard';
-
 // Bill pages
 import CreateBillPage from './pages/bills/CreateBillPage';
-import BillsManagementPage from './pages/bills/BillsManagementPage';
-import GroupedBillPage from './pages/bills/GroupedBillPage';
-import FlexibleGroupedBillPage from './pages/bills/FlexibleGroupedBillPage';
-import ItemizedBillPricingPage from './pages/bills/ItemizedBillPricingPage';
+
+// Staff pages
+import StaffDashboard from './pages/staff/StaffDashboard';
 
 // Work order pages
 import WorkOrderForm from './pages/work-orders/WorkOrderForm';
@@ -120,51 +116,6 @@ function App() {
     }>
     </Route>
 
-    <Route path='/staff/bills' element={
-    <StaffRoute>
-      <ProfessionalLayout>
-        <BillsManagementPage /> 
-      </ProfessionalLayout>
-    </StaffRoute>
-    }>
-    </Route>
-
-    <Route path='/bills-management' element={
-    <AdminPrivateRoute>
-      <ProfessionalLayout>
-        <BillsManagementPage /> 
-      </ProfessionalLayout>
-    </AdminPrivateRoute>
-    }>
-    </Route>
-
-    <Route path='/admin/bills-management' element={
-    <AdminPrivateRoute>
-      <ProfessionalLayout>
-        <BillsManagementPage /> 
-      </ProfessionalLayout>
-    </AdminPrivateRoute>
-    }>
-    </Route>
-
-    <Route path='/admin/grouped-bill' element={
-    <AdminPrivateRoute>
-      <ProfessionalLayout>
-        <GroupedBillPage /> 
-      </ProfessionalLayout>
-    </AdminPrivateRoute>
-    }>
-    </Route>
-
-    <Route path='/admin/bill-pricing/:billId' element={
-    <AdminPrivateRoute>
-      <ProfessionalLayout>
-        <ItemizedBillPricingPage /> 
-      </ProfessionalLayout>
-    </AdminPrivateRoute>
-    }>
-    </Route>
-
     <Route path='/admin/monthly-billing' element={
     <AdminPrivateRoute>
       <ProfessionalLayout>
@@ -178,24 +129,6 @@ function App() {
     <StaffRoute>
       <ProfessionalLayout>
         <BatchWorkOrderForm /> 
-      </ProfessionalLayout>
-    </StaffRoute>
-    }>
-    </Route>
-
-    <Route path='/grouped-bill' element={
-    <StaffRoute>
-      <ProfessionalLayout>
-        <GroupedBillPage /> 
-      </ProfessionalLayout>
-    </StaffRoute>
-    }>
-    </Route>
-
-    <Route path='/flexible-grouped-bill' element={
-    <StaffRoute>
-      <ProfessionalLayout>
-        <FlexibleGroupedBillPage /> 
       </ProfessionalLayout>
     </StaffRoute>
     }>

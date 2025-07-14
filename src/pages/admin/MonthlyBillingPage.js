@@ -12,11 +12,45 @@ const MonthlyBillingPage = () => {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
     const [pricing, setPricing] = useState({}); // { workOrderId: price }
+    const [rates, setRates] = useState({}); // { workOrderId: rate }
     const [totalAmount, setTotalAmount] = useState(0);
     const [isAdmin, setIsAdmin] = useState(false);
     const [billsHistory, setBillsHistory] = useState([]);
     
     const navigate = useNavigate();
+
+    // Function to count teeth from tooth numbers
+    const countTeeth = (toothNumbers) => {
+        if (!toothNumbers) return 0;
+        
+        let teeth = [];
+        
+        // Handle different data formats
+        if (Array.isArray(toothNumbers)) {
+            teeth = toothNumbers;
+        } else if (typeof toothNumbers === 'string') {
+            try {
+                // Try to parse as JSON first (in case it's a JSON string)
+                const parsed = JSON.parse(toothNumbers);
+                teeth = Array.isArray(parsed) ? parsed : [parsed];
+            } catch (e) {
+                // If JSON parsing fails, treat as comma-separated string
+                teeth = toothNumbers.split(',').map(t => t.trim()).filter(t => t);
+            }
+        } else if (typeof toothNumbers === 'object' && toothNumbers !== null) {
+            // Handle case where it might be an object with array-like properties
+            const values = Object.values(toothNumbers);
+            teeth = values.length > 0 ? values : [toothNumbers];
+        } else {
+            teeth = [toothNumbers];
+        }
+        
+        // Count valid tooth numbers
+        return teeth.filter(tooth => {
+            const toothNum = parseInt(tooth);
+            return !isNaN(toothNum) && toothNum > 0;
+        }).length;
+    };
 
     // Function to group teeth by quadrants
     const groupTeethByQuadrants = (toothNumbers) => {
@@ -256,12 +290,15 @@ const MonthlyBillingPage = () => {
                 
                 setWorkOrders(filtered);
                 
-                // Initialize pricing with existing amounts or 0
+                // Initialize pricing and rates with existing amounts or 0
                 const initialPricing = {};
+                const initialRates = {};
                 filtered.forEach(order => {
                     initialPricing[order.id] = order.amount || 0;
+                    initialRates[order.id] = 0; // Default rate to 0
                 });
                 setPricing(initialPricing);
+                setRates(initialRates);
                 calculateTotal(initialPricing);
             }
         } catch (error) {
@@ -280,6 +317,22 @@ const MonthlyBillingPage = () => {
         const newPricing = { ...pricing, [workOrderId]: price };
         setPricing(newPricing);
         calculateTotal(newPricing);
+    };
+
+    const handleRateChange = (workOrderId, rate) => {
+        const newRates = { ...rates, [workOrderId]: rate };
+        setRates(newRates);
+        
+        // Find the work order and calculate price based on tooth count
+        const workOrder = workOrders.find(order => order.id === workOrderId);
+        if (workOrder) {
+            const teethCount = countTeeth(workOrder.tooth_numbers);
+            const calculatedPrice = parseFloat(rate || 0) * teethCount;
+            
+            const newPricing = { ...pricing, [workOrderId]: calculatedPrice };
+            setPricing(newPricing);
+            calculateTotal(newPricing);
+        }
     };
 
     const saveAllPrices = async () => {
@@ -326,7 +379,8 @@ const MonthlyBillingPage = () => {
                 month: selectedMonth,
                 work_orders: workOrders.map(order => ({
                     ...order,
-                    amount: parseFloat(pricing[order.id] || 0)
+                    amount: parseFloat(pricing[order.id] || 0),
+                    rate: parseFloat(rates[order.id] || 0)
                 })),
                 total_amount: totalAmount,
                 generated_date: new Date().toISOString().split('T')[0]
@@ -352,6 +406,39 @@ const MonthlyBillingPage = () => {
     };
 
     const printConsolidatedBill = async (billData) => {
+        // Function to count teeth from tooth numbers (for print)
+        const countTeethForPrint = (toothNumbers) => {
+            if (!toothNumbers) return 0;
+            
+            let teeth = [];
+            
+            // Handle different data formats
+            if (Array.isArray(toothNumbers)) {
+                teeth = toothNumbers;
+            } else if (typeof toothNumbers === 'string') {
+                try {
+                    // Try to parse as JSON first (in case it's a JSON string)
+                    const parsed = JSON.parse(toothNumbers);
+                    teeth = Array.isArray(parsed) ? parsed : [parsed];
+                } catch (e) {
+                    // If JSON parsing fails, treat as comma-separated string
+                    teeth = toothNumbers.split(',').map(t => t.trim()).filter(t => t);
+                }
+            } else if (typeof toothNumbers === 'object' && toothNumbers !== null) {
+                // Handle case where it might be an object with array-like properties
+                const values = Object.values(toothNumbers);
+                teeth = values.length > 0 ? values : [toothNumbers];
+            } else {
+                teeth = [toothNumbers];
+            }
+            
+            // Count valid tooth numbers
+            return teeth.filter(tooth => {
+                const toothNum = parseInt(tooth);
+                return !isNaN(toothNum) && toothNum > 0;
+            }).length;
+        };
+
         // Function to group teeth by quadrants for print
         const groupTeethByQuadrants = (toothNumbers) => {
             if (!toothNumbers) return { Q1: [], Q2: [], Q3: [], Q4: [] };
@@ -408,17 +495,17 @@ const MonthlyBillingPage = () => {
             const quadrants = groupTeethByQuadrants(toothNumbers);
             
             return `
-                <div style="display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; width: 38px; height: 24px; border: 1px solid #333; font-size: 5px; font-family: monospace; margin: 0 auto;">
-                    <div style="border: 1px solid #666; padding: 0; background-color: ${quadrants.Q2.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 4px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; width: 50px; height: 25px; border: 1px solid #333; font-size: 6px; font-family: monospace; margin: 0 auto;">
+                    <div style="border: 1px solid #666; padding: 0; background-color: ${quadrants.Q2.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 7px;">
                         ${quadrants.Q2.length > 0 ? quadrants.Q2.map(tooth => tooth.toString().slice(-1)).join('') : ''}
                     </div>
-                    <div style="border: 1px solid #666; padding: 0; background-color: ${quadrants.Q1.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 4px;">
+                    <div style="border: 1px solid #666; padding: 0; background-color: ${quadrants.Q1.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 7px;">
                         ${quadrants.Q1.length > 0 ? quadrants.Q1.map(tooth => tooth.toString().slice(-1)).join('') : ''}
                     </div>
-                    <div style="border: 1px solid #666; padding: 0; background-color: ${quadrants.Q3.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 4px;">
+                    <div style="border: 1px solid #666; padding: 0; background-color: ${quadrants.Q3.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 7px;">
                         ${quadrants.Q3.length > 0 ? quadrants.Q3.map(tooth => tooth.toString().slice(-1)).join('') : ''}
                     </div>
-                    <div style="border: 1px solid #666; padding: 0; background-color: ${quadrants.Q4.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 4px;">
+                    <div style="border: 1px solid #666; padding: 0; background-color: ${quadrants.Q4.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 7px;">
                         ${quadrants.Q4.length > 0 ? quadrants.Q4.map(tooth => tooth.toString().slice(-1)).join('') : ''}
                     </div>
                 </div>
@@ -447,7 +534,6 @@ const MonthlyBillingPage = () => {
             background: white;
         }
         .header { 
-            text-align: center; 
             margin-bottom: 18px; 
             border-bottom: 3px solid #0066cc; 
             padding-bottom: 12px;
@@ -457,11 +543,14 @@ const MonthlyBillingPage = () => {
         }
         .header-content { 
             display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            gap: 18px; 
-            margin-bottom: 10px; 
+            align-items: flex-start; 
+            justify-content: space-between; 
             padding: 10px;
+        }
+        .left-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
         }
         .logo { 
             width: 65px; 
@@ -471,7 +560,7 @@ const MonthlyBillingPage = () => {
             border-radius: 50%;
             box-shadow: 0 2px 8px rgba(0,102,204,0.3);
         }
-        .company-info { text-align: center; }
+        .company-info { text-align: left; }
         .company-name { 
             font-size: 22px; 
             font-weight: bold; 
@@ -484,8 +573,23 @@ const MonthlyBillingPage = () => {
             font-size: 15px; 
             color: #555; 
             font-weight: 600; 
-            margin-bottom: 10px;
+            margin-bottom: 0;
             font-style: italic;
+        }
+        .doctor-info { 
+            text-align: right;
+            font-size: 11px; 
+            background: rgba(255, 255, 255, 0.8);
+            padding: 12px; 
+            border-radius: 8px;
+            border-left: 4px solid #0066cc;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            min-width: 200px;
+        }
+        .doctor-info strong { 
+            font-size: 12px; 
+            color: #0066cc; 
+            font-weight: 600;
         }
         .bill-title { 
             font-size: 18px; 
@@ -498,26 +602,8 @@ const MonthlyBillingPage = () => {
             border-radius: 20px;
             display: inline-block;
             box-shadow: 0 2px 4px rgba(0,102,204,0.3);
-        }
-        .doctor-info { 
-            margin-bottom: 15px; 
-            font-size: 11px; 
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            padding: 12px; 
-            border-radius: 8px;
-            border-left: 4px solid #0066cc;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .doctor-info strong { 
-            font-size: 12px; 
-            color: #0066cc; 
-            font-weight: 600;
-        }
-        .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 15px;
-            align-items: center;
+            text-align: center;
+            width: 100%;
         }
         table { 
             width: 100%; 
@@ -574,9 +660,10 @@ const MonthlyBillingPage = () => {
         .serial-col { width: 8%; }
         .patient-col { width: 18%; }
         .product-col { width: 20%; }
-        .shade-col { width: 10%; }
         .tooth-col { width: 15%; }
+        .count-col { width: 8%; }
         .date-col { width: 12%; }
+        .rate-col { width: 10%; }
         .amount-col { width: 12%; }
         
         /* Enhanced quadrant styling */
@@ -600,97 +687,100 @@ const MonthlyBillingPage = () => {
             body { 
                 margin: 0; 
                 padding: 0; 
-                font-size: 7px; 
-                line-height: 1.0;
+                font-size: 9px; 
+                line-height: 1.1;
                 background: white !important;
             }
             .header { 
-                margin-bottom: 4mm; 
-                padding-bottom: 3mm;
+                margin-bottom: 3mm; 
+                padding-bottom: 2mm;
                 background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
-                border-radius: 3mm 3mm 0 0;
-                box-shadow: 0 0.8mm 1.5mm rgba(0,0,0,0.1);
+                border-radius: 2mm 2mm 0 0;
+                box-shadow: 0 0.5mm 1mm rgba(0,0,0,0.1);
                 page-break-inside: avoid;
             }
             .header-content { 
-                gap: 6mm; 
-                margin-bottom: 2mm; 
+                display: flex; 
+                align-items: flex-start; 
+                justify-content: space-between; 
                 padding: 2mm;
+            }
+            .left-section {
+                display: flex;
+                align-items: center;
+                gap: 3mm;
             }
             .logo { 
                 width: 12mm; 
                 height: 12mm; 
                 border-radius: 50%;
-                box-shadow: 0 1mm 3mm rgba(0,102,204,0.3);
+                box-shadow: 0 0.5mm 2mm rgba(0,102,204,0.3);
             }
             .company-name { 
                 font-size: 14px; 
-                letter-spacing: 0.8px;
-                text-shadow: 0.5px 0.5px 1px rgba(0,0,0,0.1);
+                letter-spacing: 0.5px;
+                text-shadow: 0.3px 0.3px 0.8px rgba(0,0,0,0.1);
             }
             .company-subtitle { 
                 font-size: 10px; 
-                margin-bottom: 2mm;
+                margin-bottom: 0;
+            }
+            .doctor-info { 
+                font-size: 8px;
+                background: rgba(255, 255, 255, 0.8) !important;
+                border-left: 1mm solid #0066cc;
+                border-radius: 1mm;
+                box-shadow: 0 0.5mm 1mm rgba(0,0,0,0.1);
+                page-break-inside: avoid;
+                text-align: right;
+                padding: 2mm;
+                min-width: 35mm;
+            }
+            .doctor-info strong { 
+                font-size: 9px; 
+                color: #0066cc !important;
             }
             .bill-title { 
                 font-size: 12px; 
                 margin-top: 2mm;
                 padding: 2mm 4mm;
-                border-radius: 6mm;
+                border-radius: 4mm;
                 background: #0066cc !important;
                 color: white !important;
-                box-shadow: 0 1mm 2mm rgba(0,102,204,0.3);
-            }
-            .doctor-info { 
-                margin-bottom: 3mm; 
-                padding: 2mm; 
-                font-size: 7px;
-                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
-                border-left: 1.5mm solid #0066cc;
-                border-radius: 1.5mm;
-                box-shadow: 0 0.8mm 1.5mm rgba(0,0,0,0.1);
-                page-break-inside: avoid;
-            }
-            .doctor-info strong { 
-                font-size: 8px; 
-                color: #0066cc !important;
-            }
-            .info-grid {
-                display: grid;
-                grid-template-columns: 1fr 1fr 1fr;
-                gap: 3mm;
+                box-shadow: 0 0.5mm 1mm rgba(0,102,204,0.3);
+                text-align: center;
+                width: 100%;
             }
             table { 
-                font-size: 5.5px; 
-                margin-bottom: 1.5mm;
-                box-shadow: 0 0.8mm 2mm rgba(0,0,0,0.1);
-                border-radius: 1.5mm;
+                font-size: 7px; 
+                margin-bottom: 1mm;
+                box-shadow: 0 0.5mm 1mm rgba(0,0,0,0.1);
+                border-radius: 1mm;
                 overflow: hidden;
                 page-break-inside: auto;
             }
             th, td { 
-                padding: 0.3mm 0.8mm; 
-                font-size: 5.5px;
+                padding: 1mm 1.5mm; 
+                font-size: 7px;
                 border: 0.2mm solid #ddd;
-                line-height: 1.0;
+                line-height: 1.1;
                 vertical-align: middle;
             }
             th { 
                 background: linear-gradient(135deg, #0066cc 0%, #004499 100%) !important;
                 color: white !important;
-                font-size: 5.5px;
+                font-size: 7px;
                 font-weight: bold;
                 text-align: center;
                 letter-spacing: 0.2px;
-                text-shadow: 0.3px 0.3px 0.8px rgba(0,0,0,0.3);
+                text-shadow: 0.2px 0.2px 0.5px rgba(0,0,0,0.3);
                 page-break-inside: avoid;
                 page-break-after: avoid;
             }
             tbody tr {
                 page-break-inside: avoid;
-                height: 3.2mm;
-                min-height: 3.2mm;
-                max-height: 3.2mm;
+                height: 4mm;
+                min-height: 4mm;
             }
             tbody tr:nth-child(even) {
                 background-color: #f8f9fa !important;
@@ -698,35 +788,36 @@ const MonthlyBillingPage = () => {
             .total-row { 
                 background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
                 color: white !important;
-                font-size: 7px;
+                font-size: 8px;
                 font-weight: bold;
-                text-shadow: 0.5px 0.5px 1px rgba(0,0,0,0.3);
+                text-shadow: 0.3px 0.3px 0.8px rgba(0,0,0,0.3);
                 page-break-inside: avoid;
                 page-break-before: avoid;
             }
             .footer { 
-                margin-top: 3mm; 
+                margin-top: 2mm; 
                 padding-top: 2mm;
-                font-size: 5.5px;
+                font-size: 6px;
                 background: #f8f9fa !important;
-                border-top: 0.8mm solid #0066cc;
-                border-radius: 0 0 1.5mm 1.5mm;
+                border-top: 0.5mm solid #0066cc;
+                border-radius: 0 0 1mm 1mm;
                 page-break-inside: avoid;
             }
-            .serial-col { width: 6%; min-width: 6%; max-width: 6%; }
-            .patient-col { width: 16%; min-width: 16%; max-width: 16%; }
-            .product-col { width: 18%; min-width: 18%; max-width: 18%; }
-            .shade-col { width: 8%; min-width: 8%; max-width: 8%; }
-            .tooth-col { width: 14%; min-width: 14%; max-width: 14%; }
-            .date-col { width: 10%; min-width: 10%; max-width: 10%; }
-            .amount-col { width: 10%; min-width: 10%; max-width: 10%; }
+            .serial-col { width: 8%; min-width: 8%; max-width: 8%; }
+            .patient-col { width: 18%; min-width: 18%; max-width: 18%; }
+            .product-col { width: 20%; min-width: 20%; max-width: 20%; }
+            .tooth-col { width: 16%; min-width: 16%; max-width: 16%; }
+            .count-col { width: 8%; min-width: 8%; max-width: 8%; }
+            .date-col { width: 12%; min-width: 12%; max-width: 12%; }
+            .rate-col { width: 10%; min-width: 10%; max-width: 10%; }
+            .amount-col { width: 12%; min-width: 12%; max-width: 12%; }
             
-            /* Optimized quadrant display for print */
+            /* Enhanced quadrant display for print */
             .quadrant-container {
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                height: 3mm;
+                height: 4mm;
                 width: 100%;
             }
         }
@@ -735,19 +826,20 @@ const MonthlyBillingPage = () => {
 <body>
     <div class="header">
         <div class="header-content">
-            <img src="/logo.png" alt="Marshal Dental Art Logo" class="logo" onerror="this.style.display='none'" />
-            <div class="company-info">
-                <div class="company-name">MARSHAL DENTAL ART</div>
-                <div class="company-subtitle">CAD Camp Milling Center</div>
+            <div class="left-section">
+                <img src="/logo.png" alt="Marshal Dental Art Logo" class="logo" onerror="this.style.display='none'" />
+                <div class="company-info">
+                    <div class="company-name">MARSHAL DENTAL ART</div>
+                    <div class="company-subtitle">CAD Camp Milling Center</div>
+                </div>
+            </div>
+            <div class="doctor-info">
+                <strong>Doctor:</strong> ${billData.doctor_name}<br>
+                <strong>Month:</strong> ${monthName}<br>
+                <strong>Generated:</strong> ${new Date(billData.generated_date).toLocaleDateString()}
             </div>
         </div>
         <div class="bill-title">Monthly Consolidated Bill</div>
-    </div>
-    
-    <div class="doctor-info">
-        <strong>Doctor:</strong> ${billData.doctor_name}<br>
-        <strong>Month:</strong> ${monthName}<br>
-        <strong>Generated:</strong> ${new Date(billData.generated_date).toLocaleDateString()}
     </div>
     
     <table>
@@ -756,9 +848,10 @@ const MonthlyBillingPage = () => {
                 <th class="serial-col">Serial #</th>
                 <th class="patient-col">Patient</th>
                 <th class="product-col">Product Quality</th>
-                <th class="shade-col">Shade</th>
                 <th class="tooth-col">Quadrants</th>
+                <th class="count-col">Count</th>
                 <th class="date-col">Date</th>
+                <th class="rate-col">Rate (₹)</th>
                 <th class="amount-col amount">Amount (₹)</th>
             </tr>
         </thead>
@@ -768,14 +861,15 @@ const MonthlyBillingPage = () => {
                     <td class="serial-col">${order.serial_number}</td>
                     <td class="patient-col">${order.patient_name}</td>
                     <td class="product-col">${order.product_quality}</td>
-                    <td class="shade-col">${order.product_shade || '-'}</td>
                     <td class="tooth-col" style="text-align: center; vertical-align: middle;">${generateQuadrantHTML(order.tooth_numbers)}</td>
+                    <td class="count-col" style="text-align: center;"><strong>${countTeethForPrint(order.tooth_numbers)}</strong></td>
                     <td class="date-col">${new Date(order.completion_date).toLocaleDateString('en-GB')}</td>
+                    <td class="rate-col amount">${rates[order.id] ? parseFloat(rates[order.id]).toFixed(2) : '0.00'}</td>
                     <td class="amount-col amount">${order.amount ? parseFloat(order.amount).toFixed(2) : '0.00'}</td>
                 </tr>
             `).join('')}
             <tr class="total-row">
-                <td colspan="6"><strong>Total Amount</strong></td>
+                <td colspan="7"><strong>Total Amount</strong></td>
                 <td class="amount"><strong>₹${billData.total_amount.toFixed(2)}</strong></td>
             </tr>
         </tbody>
@@ -902,9 +996,10 @@ const MonthlyBillingPage = () => {
                                                         <th>Serial #</th>
                                                         <th>Patient</th>
                                                         <th>Product Quality</th>
-                                                        <th>Product Shade</th>
                                                         <th>Tooth Quadrants</th>
+                                                        <th>Teeth Count</th>
                                                         <th>Completion Date</th>
+                                                        <th>Rate (₹)</th>
                                                         <th>Amount (₹)</th>
                                                     </tr>
                                                 </thead>
@@ -914,10 +1009,22 @@ const MonthlyBillingPage = () => {
                                                             <td><strong>{order.serial_number}</strong></td>
                                                             <td>{order.patient_name}</td>
                                                             <td>{order.product_quality}</td>
-                                                            <td>{order.product_shade || '-'}</td>                                            <td style={{ padding: '4px' }}>
-                                                <ToothQuadrantDisplay toothNumbers={order.tooth_numbers} />
-                                            </td>
+                                                            <td style={{ padding: '4px' }}>
+                                                                <ToothQuadrantDisplay toothNumbers={order.tooth_numbers} />
+                                                            </td>
+                                                            <td><strong>{countTeeth(order.tooth_numbers)}</strong></td>
                                                             <td>{new Date(order.completion_date).toLocaleDateString()}</td>
+                                                            <td>
+                                                                <input
+                                                                    type="number"
+                                                                    className="form-control"
+                                                                    style={{width: '80px'}}
+                                                                    value={rates[order.id] || ''}
+                                                                    onChange={(e) => handleRateChange(order.id, e.target.value)}
+                                                                    placeholder="0.00"
+                                                                    step="0.01"
+                                                                />
+                                                            </td>
                                                             <td>
                                                                 <input
                                                                     type="number"
@@ -934,7 +1041,7 @@ const MonthlyBillingPage = () => {
                                                 </tbody>
                                                 <tfoot>
                                                     <tr className="table-info">
-                                                        <td colSpan="6"><strong>Total Amount</strong></td>
+                                                        <td colSpan="7"><strong>Total Amount</strong></td>
                                                         <td><strong>₹{totalAmount.toFixed(2)}</strong></td>
                                                     </tr>
                                                 </tfoot>
