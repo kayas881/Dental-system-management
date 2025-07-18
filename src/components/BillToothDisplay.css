@@ -1,11 +1,7 @@
 /* Bill Tooth Display Styles */
 .tooth-display {
-    background: #fff;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-    padding: 0.5rem;
     display: inline-block;
-    min-width: 120px;
+    vertical-align: middle;
 }
 
 .tooth-display-empty {
@@ -15,170 +11,54 @@
     display: inline-block;
 }
 
-.quadrant-display {
-    text-align: center;
-}
-
 .quadrant-grid {
-    border: 2px solid #343a40;
-    border-radius: 4px;
-    overflow: hidden;
-    background: white;
-    max-width: 120px;
-    margin: 0 auto;
-}
-
-.quadrant-row {
-    display: flex;
-    height: 40px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    width: 50px;
+    height: 35px;
+    border: 1px solid #343a40;
+    font-family: monospace;
+    font-weight: bold;
+    background-color: #f8f9fa;
 }
 
 .quadrant-cell {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    border: 1px solid #dee2e6;
-    background: #f8f9fa;
-    position: relative;
-}
-
-.quadrant-divider {
-    width: 1px;
-    background: #343a40;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: bold;
-    font-size: 0.7rem;
-    color: #343a40;
-}
-
-.horizontal-divider {
-    margin: 0;
-    height: 1px;
-}
-
-.horizontal-divider hr {
-    margin: 0;
-    border: 0;
-    border-top: 2px solid #343a40;
-}
-
-.quadrant-label {
-    font-size: 0.6rem;
-    font-weight: bold;
-    color: #6c757d;
-    line-height: 1;
-    margin-bottom: 2px;
-}
-
-.quadrant-numbers {
+    border: 1px solid #ccc;
     font-size: 0.9rem;
-    font-weight: bold;
     color: #343a40;
-    line-height: 1;
-    letter-spacing: 1px;
 }
 
-/* Special styling for printed bills */
+/* Print Styles */
 @media print {
     .tooth-display {
-        border: 2px solid #000;
-        background: white;
-    }
-    
-    .quadrant-grid {
-        border: 2px solid #000;
-    }
-    
-    .quadrant-cell {
         border: 1px solid #000;
-        background: white;
     }
-    
-    .quadrant-divider {
-        background: #000;
-        color: #000;
+    .quadrant-grid {
+        border: 1px solid #000;
     }
-    
-    .horizontal-divider hr {
-        border-top: 2px solid #000;
+    .quadrant-cell {
+        border: 1px solid #666;
+        background-color: white !important;
     }
 }
 
-/* Hover effect for interactive elements */
-.tooth-display:hover {
-    border-color: #007bff;
-    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-}
-
-/* Size variations */
-.tooth-display.compact {
-    min-width: 80px;
-    padding: 0.25rem;
-}
-
-.tooth-display.compact .quadrant-grid {
-    max-width: 80px;
-}
-
-.tooth-display.compact .quadrant-row {
+/* Size Variants */
+.tooth-display-small .quadrant-grid {
+    width: 40px;
     height: 30px;
 }
-
-.tooth-display.compact .quadrant-label {
-    font-size: 0.5rem;
-}
-
-.tooth-display.compact .quadrant-numbers {
+.tooth-display-small .quadrant-cell {
     font-size: 0.8rem;
 }
 
-/* Size variants */
-.tooth-display-small {
-    padding: 0.25rem;
-    min-width: 100px;
-}
-
-.tooth-display-small .quadrant-grid {
-    max-width: 100px;
-}
-
-.tooth-display-small .quadrant-row {
-    height: 35px;
-}
-
-.tooth-display-small .quadrant-label {
-    font-size: 0.6rem;
-}
-
-.tooth-display-small .quadrant-numbers {
-    font-size: 0.9rem;
-}
-
-.tooth-display-mini {
-    padding: 0.15rem;
-    min-width: 70px;
-}
-
 .tooth-display-mini .quadrant-grid {
-    max-width: 70px;
-}
-
-.tooth-display-mini .quadrant-row {
+    width: 30px;
     height: 25px;
 }
-
-.tooth-display-mini .quadrant-label {
-    font-size: 0.5rem;
-}
-
-.tooth-display-mini .quadrant-numbers {
+.tooth-display-mini .quadrant-cell {
     font-size: 0.7rem;
-}
-
-.tooth-display-mini .horizontal-divider hr {
-    margin: 2px 0;
 }

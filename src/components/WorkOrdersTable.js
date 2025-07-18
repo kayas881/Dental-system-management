@@ -2,7 +2,7 @@ import React from 'react';
 import './WorkOrdersTable.css';
 import { printInitialBill } from './bills/BillPrintUtils';
 import { dentalLabService } from '../services/dentalLabService';
-import ToothQuadrantDisplay from '../components/ToothQuadrantDisplay';
+import BillToothDisplay from '../components/BillToothDisplay';
 
 const WorkOrdersTable = ({ 
     filteredWorkOrders, 
@@ -830,13 +830,15 @@ const WorkOrdersTable = ({
                                         </td>
                                     </tr>
                                     
-                                    {/* Expanded Details Row (Desktop) */}
-                                    {isExpanded(order.id) && (
+                          {isExpanded(order.id) && (
                                         <tr className="table-light">
                                             <td colSpan="9">
                                                 <div className="p-3">
-                                                    <div className="row small">
-                                                        <div className="col-md-3">
+                                                    {/* We are replacing the "row" div with a flexbox div */}
+                                                    <div style={{ display: 'flex', width: '100%', gap: '1rem' }} className="small">
+                                                        
+                                                        {/* Column 1: Dates */}
+                                                        <div style={{ flex: 1 }}>
                                                             <div className="mb-2">
                                                                 <span className="text-muted">Order Date:</span><br/>
                                                                 <strong>{formatDate(order.order_date)}</strong>
@@ -856,42 +858,53 @@ const WorkOrdersTable = ({
                                                                 </div>
                                                             )}
                                                         </div>
-                                                        <div className="col-md-3">
-                                                            {/* Dynamic Trials Display in Desktop Expanded View */}
+
+                                                        {/* Column 2: Trials */}
+                                                        <div style={{ flex: 1 }}>
                                                             {(order.requires_trial || (workOrderTrials[order.id] && workOrderTrials[order.id].length > 0)) && (
                                                                 <div className="mb-3">
                                                                     <span className="text-muted">Trial Information:</span><br/>
                                                                     {order.requires_trial && (
                                                                         <span className="badge bg-warning text-dark mb-2">🦷 Trial Required</span>
                                                                     )}
-                                                                    
-                                                                    {/* Display existing trials */}
                                                                     {workOrderTrials[order.id] && workOrderTrials[order.id].map((trial) => (
                                                                         <div key={trial.id} className="text-success mt-1">
                                                                             ✓ {trial.trial_name}: {formatDate(trial.trial_date)}
                                                                         </div>
                                                                     ))}
-                                                                    
-                                                                    {/* Show waiting message if no trials */}
                                                                     {order.requires_trial && (!workOrderTrials[order.id] || workOrderTrials[order.id].length === 0) && (
                                                                         <div className="text-warning mt-1">⏳ No trials scheduled yet</div>
                                                                     )}
                                                                 </div>
                                                             )}
                                                         </div>
-                                                        <div className="col-md-6">
+
+                                                        {/* Column 3: Feedback */}
+                                                        <div style={{ flex: 1 }}>
                                                             {order.feedback && (
                                                                 <div className="mb-2">
-                                                                    <span fclassName="text-muted">Feedback:</span><br/>
+                                                                    <span className="text-muted">Feedback:</span><br/>
                                                                     <span className="text-dark">{order.feedback}</span>
                                                                 </div>
                                                             )}
                                                         </div>
+
+                                                        {/* Column 4: Tooth Position */}
+                                                        <div style={{ flex: 1 }}>
+                                                            <div className="mb-2">
+                                                                <span className="text-muted">Tooth Position:</span><br />
+                                                                <BillToothDisplay
+                                                                    toothNumbers={order.tooth_numbers} 
+                                                                />
+                                                            </div>
+                                                        </div>
+
                                                     </div>
                                                 </div>
                                             </td>
                                         </tr>
                                     )}
+
                                     
                                     {/* Editing Row (Desktop) */}
 

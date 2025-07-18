@@ -739,51 +739,48 @@ const updateBillItemPrice = async (itemId, unitPrice) => {
 // Get work orders with batch information
 const getWorkOrdersWithBatchInfo = async () => {
     try {
-        console.log('Fetching work orders with batch info...');
+        console.log('Fetching work orders directly from the main table to ensure all data is included...');
         
-        // First try the view, fall back to regular table if view doesn't exist
-        let { data, error } = await supabase
-            .from('work_orders_with_batch_info')
-            .select('*')
+        // Bypassing the faulty 'work_orders_with_batch_info' view and fetching from the source table.
+        const { data: workOrders, error } = await supabase
+            .from('work_orders')
+            .select('*') // This will correctly include the tooth_numbers column
             .order('created_at', { ascending: false });
 
-        if (error && error.message.includes('does not exist')) {
-            console.log('Batch info view not found, falling back to regular work orders table...');
-            // Fall back to regular work orders table and manually calculate batch info
-            const response = await supabase
-                .from('work_orders')
-                .select('*')
-                .order('created_at', { ascending: false });
-            
-            if (response.error) {
-                console.error('Supabase error fetching work orders:', response.error);
-                return { data: null, error: response.error };
-            }
-
-            // Manually add batch information
-            const workOrdersWithBatchInfo = response.data.map(order => ({
-                ...order,
-                batch_size: order.batch_id ? 
-                    response.data.filter(wo => wo.batch_id === order.batch_id).length : 1,
-                batch_patients: order.batch_id ?
-                    [...new Set(response.data
-                        .filter(wo => wo.batch_id === order.batch_id)
-                        .map(wo => wo.patient_name))]
-                        .sort()
-                        .join(', ') : order.patient_name
-            }));
-
-            console.log('Work orders with manual batch info calculated:', workOrdersWithBatchInfo.length);
-            return { data: workOrdersWithBatchInfo, error: null };
-        }
-
         if (error) {
-            console.error('Supabase error fetching work orders with batch info:', error);
+            console.error('Supabase error fetching work orders:', error);
             return { data: null, error };
         }
 
-        console.log('Work orders with batch info fetched successfully:', data.length);
-        return { data, error: null };
+        if (!workOrders) {
+            console.log('No work orders found.');
+            return { data: [], error: null };
+        }
+
+        // Manually add batch information, since we are not using the view
+        const workOrdersWithBatchInfo = workOrders.map(order => ({
+            ...order,
+            batch_size: order.batch_id 
+                ? workOrders.filter(wo => wo.batch_id === order.batch_id).length 
+                : 1,
+            batch_patients: order.batch_id 
+                ? [...new Set(workOrders
+                    .filter(wo => wo.batch_id === order.batch_id)
+                    .map(wo => wo.patient_name))]
+                    .sort()
+                    .join(', ') 
+                : order.patient_name
+        }));
+
+        console.log('Work orders with manual batch info calculated:', workOrdersWithBatchInfo.length);
+        
+        // Let's verify a sample to be sure
+        if (workOrdersWithBatchInfo.length > 0) {
+            console.log('Sample work order after processing:', workOrdersWithBatchInfo[0]);
+        }
+
+        return { data: workOrdersWithBatchInfo, error: null };
+
     } catch (error) {
         console.error('Error fetching work orders with batch info:', error);
         return { data: null, error };
@@ -1407,7 +1404,7 @@ export const dentalLabService = {
     getWorkOrder,
     getWorkOrderBySerial,
     checkWorkOrderHasBill,
-    getWorkOrdersWithBatchInfo,
+getWorkOrdersWithBatchInfo,
     getBatchWorkOrders,
     canBatchBeBilled,
     completeRevision,

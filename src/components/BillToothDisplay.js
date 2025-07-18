@@ -1,25 +1,55 @@
 import React from 'react';
-
+import './BillToothDisplay.css'; // Assuming you have a CSS file for styling
 const BillToothDisplay = ({ toothNumbers, isPreview = false, size = 'normal' }) => {
-    // Group teeth by quadrants for display
-    const groupToothsByQuadrant = (teeth) => {
-        const quadrants = {
-            upperRight: teeth.filter(t => t >= 11 && t <= 18),
-            upperLeft: teeth.filter(t => t >= 21 && t <= 28),
-            lowerLeft: teeth.filter(t => t >= 31 && t <= 38),
-            lowerRight: teeth.filter(t => t >= 41 && t <= 48)
+    // Helper function to parse tooth numbers from various formats
+    const groupToothsByQuadrant = (teethData) => {
+        const nums = [];
+        const collect = (x) => {
+            if (x == null) return;
+            if (Array.isArray(x)) return x.forEach(collect);
+            if (typeof x === 'object') return Object.values(x).forEach(collect);
+            if (typeof x === 'string') {
+                try {
+                    return collect(JSON.parse(x));
+                } catch {
+                    return x.split(/[^0-9]+/).forEach(collect);
+                }
+            }
+            const n = parseInt(x, 10);
+            if (!isNaN(n) && n >= 11 && n <= 48) nums.push(n);
         };
-        return quadrants;
+        collect(teethData);
+
+        const q = {
+            upperRight: [],
+            upperLeft: [],
+            lowerLeft: [],
+            lowerRight: []
+        };
+        nums.forEach(n => {
+            if (n >= 11 && n <= 18) q.upperRight.push(n);
+            else if (n >= 21 && n <= 28) q.upperLeft.push(n);
+            else if (n >= 31 && n <= 38) q.lowerLeft.push(n);
+            else if (n >= 41 && n <= 48) q.lowerRight.push(n);
+        });
+        Object.values(q).forEach(arr => arr.sort((a, b) => a - b));
+        return q;
     };
 
     const formatQuadrantDisplay = (teeth) => {
-        // Convert to single digit display (your client's style)
+        // Convert to single digit display
         return teeth.map(t => t.toString().charAt(1)).join('');
     };
 
-    const quadrants = groupToothsByQuadrant(toothNumbers || []);
+    const quadrants = groupToothsByQuadrant(toothNumbers);
+    const parsedNumbers = [
+        ...quadrants.upperRight,
+        ...quadrants.upperLeft,
+        ...quadrants.lowerLeft,
+        ...quadrants.lowerRight
+    ];
 
-    if (!toothNumbers || toothNumbers.length === 0) {
+    if (parsedNumbers.length === 0) {
         return (
             <div className="tooth-display-empty">
                 <small className="text-muted">No teeth specified</small>
@@ -35,64 +65,38 @@ const BillToothDisplay = ({ toothNumbers, isPreview = false, size = 'normal' }) 
         }
     };
 
-    return (
+     return (
         <div className={`tooth-display ${getSizeClass()}`}>
             {isPreview && (
                 <div className="mb-2">
                     <strong>Tooth Position(s):</strong>
-                    <span className="ms-2 badge bg-primary">{toothNumbers.join(', ')}</span>
+                    <span className="ms-2 badge bg-primary">{parsedNumbers.join(', ')}</span>
                 </div>
             )}
             
-            {/* Quadrant Display (Your Client's Style) */}
-            <div className="quadrant-display">
-                <div className="quadrant-grid">
-                    {/* Upper Row */}
-                    <div className="quadrant-row upper-row">
-                        <div className="quadrant-cell upper-right">
-                            <div className="quadrant-label">UR</div>
-                            <div className="quadrant-numbers">
-                                {quadrants.upperRight.length > 0 ? formatQuadrantDisplay(quadrants.upperRight) : '-'}
-                            </div>
-                        </div>
-                        <div className="quadrant-divider">|</div>
-                        <div className="quadrant-cell upper-left">
-                            <div className="quadrant-label">UL</div>
-                            <div className="quadrant-numbers">
-                                {quadrants.upperLeft.length > 0 ? formatQuadrantDisplay(quadrants.upperLeft) : '-'}
-                            </div>
-                        </div>
-                    </div>
-                    
-                    {/* Horizontal Divider */}
-                    <div className="horizontal-divider">
-                        <hr />
-                    </div>
-                    
-                    {/* Lower Row */}
-                    <div className="quadrant-row lower-row">
-                        <div className="quadrant-cell lower-right">
-                            <div className="quadrant-label">LR</div>
-                            <div className="quadrant-numbers">
-                                {quadrants.lowerRight.length > 0 ? formatQuadrantDisplay(quadrants.lowerRight) : '-'}
-                            </div>
-                        </div>
-                        <div className="quadrant-divider">|</div>
-                        <div className="quadrant-cell lower-left">
-                            <div className="quadrant-label">LL</div>
-                            <div className="quadrant-numbers">
-                                {quadrants.lowerLeft.length > 0 ? formatQuadrantDisplay(quadrants.lowerLeft) : '-'}
-                            </div>
-                        </div>
-                    </div>
+            <div className="quadrant-grid">
+                {/* Upper Left Quadrant (Q2) */}
+                <div className="quadrant-cell">
+                    {quadrants.upperLeft.length > 0 ? formatQuadrantDisplay(quadrants.upperLeft) : '-'}
+                </div>
+                {/* Upper Right Quadrant (Q1) */}
+                <div className="quadrant-cell">
+                    {quadrants.upperRight.length > 0 ? formatQuadrantDisplay(quadrants.upperRight) : '-'}
+                </div>
+                {/* Lower Left Quadrant (Q3) */}
+                <div className="quadrant-cell">
+                    {quadrants.lowerLeft.length > 0 ? formatQuadrantDisplay(quadrants.lowerLeft) : '-'}
+                </div>
+                {/* Lower Right Quadrant (Q4) */}
+                <div className="quadrant-cell">
+                    {quadrants.lowerRight.length > 0 ? formatQuadrantDisplay(quadrants.lowerRight) : '-'}
                 </div>
             </div>
 
-            {/* Full Numbers Display (for reference) */}
             {isPreview && (
                 <div className="mt-2">
-                    <small className="text-muted">
-                        Full notation: {toothNumbers.join(', ')}
+                     <small className="text-muted"> 
+                        Full notation: {parsedNumbers.join(', ')}
                     </small>
                 </div>
             )}
