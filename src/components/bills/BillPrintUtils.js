@@ -136,7 +136,7 @@ export const generateCompanyHeader = () => `
     <div class="header">
         <div class="company-info">
             <div class="company-name">MARSHAL DENTAL ART</div>
-            <div class="company-subtitle">CAD Camp Milling Center</div>
+            <div class="company-subtitle">CAD Cam Milling Center</div>
             <div class="company-address">📍Harmony Archade industrial estate building no B.106 behind pranayu hospital pimpalghar Bhiwandi-421311</div>
         </div>
         <img src="${window.location.origin}/logo.png" alt="MARSHAL DENTAL ART Logo" class="company-logo" onerror="this.style.display='none'" />

@@ -45,7 +45,7 @@ const WorkOrdersTable = ({
     const [expandedOrders, setExpandedOrders] = React.useState(new Set());
     
     // Helper function to get status badge
-    const getStatusBadge = (status) => {
+const getStatusBadge = (status) => {
         switch (status) {
             case 'completed':
                 return { class: 'bg-success', text: 'Completed' };
@@ -107,19 +107,20 @@ const WorkOrdersTable = ({
     };
     
     
-    const toggleExpanded = (orderId) => {
+  const toggleExpanded = (orderId) => {
         const newExpanded = new Set(expandedOrders);
         if (newExpanded.has(orderId)) {
             newExpanded.delete(orderId);
         } else {
             newExpanded.add(orderId);
-            // Load trials when expanding for the first time
             if (loadTrialsForWorkOrder) {
                 loadTrialsForWorkOrder(orderId);
             }
         }
         setExpandedOrders(newExpanded);
     };
+    
+
     
     const isExpanded = (orderId) => expandedOrders.has(orderId);
     return (
@@ -305,19 +306,6 @@ const WorkOrdersTable = ({
                                                 ✓
                                             </button>
                                         )}
-                                        {(order.is_revision || order.revision_count > 0) && (
-                                            <button
-                                                className="btn btn-outline-info btn-sm"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    loadRevisionHistory(order.id);
-                                                }}
-                                                title="View revision history"
-                                            >
-                                                📋
-                                            </button>
-                                        
-                                        )}
                                     </div>
                                 )}
                             </div>
@@ -338,7 +326,13 @@ const WorkOrdersTable = ({
                                                 {formatDate(order.completion_date)}
                                             </div>
                                         )}
-                                        {order.expected_complete_date && (
+                                    {order.expected_complete_date && (
+                                        <div>
+                                            <div className="alert alert-warning mt-2 mb-2 p-2">
+                                                <h6 className="alert-heading small mb-1">🔄 Return & Revision</h6>
+                                                <p className="mb-1 small"><strong>Reason:</strong> {order.return_reason}</p>
+                                                {order.revision_notes && <p className="mb-0 small"><strong>Notes:</strong> {order.revision_notes}</p>}
+                                            </div>
                                             <div className="mb-2">
                                                 <span className="text-muted">Expected:</span><br/>
                                                 <span className={`${
@@ -352,7 +346,8 @@ const WorkOrdersTable = ({
                                                     )}
                                                 </span>
                                             </div>
-                                        )}
+                                        </div>
+                                    )}
                                     </div>
                                     <div className="col-6">
                                         {/* Dynamic Trials Display */}
@@ -801,18 +796,6 @@ const WorkOrdersTable = ({
                                                 ✓
                                             </button>
                                         )}
-                                        {(order.is_revision || order.revision_count > 0) && (
-                                            <button
-                                                className="btn btn-outline-info btn-sm"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    loadRevisionHistory(order.id);
-                                                }}
-                                                title="View revision history"
-                                            >
-                                                📋
-                                            </button>
-                                        )}
                                                     </>
                                                 )}
                                             </div>
@@ -900,6 +883,16 @@ const WorkOrdersTable = ({
                                                         </div>
 
                                                     </div>
+                                                              {order.return_reason && (
+                                                        <div className="alert alert-warning mt-2 mb-0">
+                                                            <h6 className="alert-heading small">🔄 Return & Revision Details</h6>
+                                                            <div className="d-flex justify-content-between">
+                                                                <p className="mb-1 small"><strong>Reason:</strong> {order.return_reason}</p>
+                                                                {order.return_date && <small className="text-muted">Returned on: {formatDate(order.return_date)}</small>}
+                                                            </div>
+                                                            {order.revision_notes && <p className="mb-0 small"><strong>Notes:</strong> {order.revision_notes}</p>}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>

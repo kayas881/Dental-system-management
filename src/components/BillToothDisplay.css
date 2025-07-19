@@ -17,32 +17,48 @@
     grid-template-rows: 1fr 1fr;
     width: 50px;
     height: 35px;
-    border: 1px solid #343a40;
+    
+    /* REMOVE this line to avoid double borders */
+    /* border: 1px solid #343a40; */
+
     font-family: monospace;
     font-weight: bold;
-    background-color: #f8f9fa;
 }
 
+/* Proper borders for all cells */
 .quadrant-cell {
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid #ccc;
     font-size: 0.9rem;
     color: #343a40;
+    background-color: #f8f9fa;
+
+    /* Give each cell full border */
+    border: 1px solid #343a40;
+    box-sizing: border-box;
 }
+
+.quadrant-grid {
+    border: 1px solid #343a40;
+    gap: 0; /* no gaps to keep borders aligned */
+}
+
+
 
 /* Print Styles */
 @media print {
-    .tooth-display {
-        border: 1px solid #000;
-    }
     .quadrant-grid {
-        border: 1px solid #000;
-    }
-    .quadrant-cell {
-        border: 1px solid #666;
+        border-color: #000;
         background-color: white !important;
+    }
+    .quadrant-cell:nth-child(1),
+    .quadrant-cell:nth-child(2) {
+        border-bottom-color: #000;
+    }
+    .quadrant-cell:nth-child(1),
+    .quadrant-cell:nth-child(3) {
+        border-right-color: #000;
     }
 }
 

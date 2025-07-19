@@ -4,11 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import WorkOrdersTable from '../../components/WorkOrdersTable';
 
 const WorkOrdersList = () => {
+    // ... (keep all existing useState hooks as they are)
     const [workOrders, setWorkOrders] = useState([]);
     const [filteredWorkOrders, setFilteredWorkOrders] = useState([]);
-    const [billStatus, setBillStatus] = useState({}); // Track which orders have bills
-    const [selectedOrders, setSelectedOrders] = useState([]); // For batch billing
-    const [batchGroups, setBatchGroups] = useState({}); // Group orders by batch_id
+    const [billStatus, setBillStatus] = useState({});
+    const [selectedOrders, setSelectedOrders] = useState([]);
+    const [batchGroups, setBatchGroups] = useState({});
     const [searchQuery, setSearchQuery] = useState('');
     const [filters, setFilters] = useState({
         dateFrom: '',
@@ -26,31 +27,27 @@ const WorkOrdersList = () => {
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [completionDate, setCompletionDate] = useState('');
     const [editingOrder, setEditingOrder] = useState(null);
-    const [editData, setEditData] = useState({
-        feedback: ''
-    });
-    const [workOrderTrials, setWorkOrderTrials] = useState({}); // Store trials per work order ID
-    const [showTrialForm, setShowTrialForm] = useState({}); // Store trial form visibility per work order ID
-    const [newTrial, setNewTrial] = useState({
-        trial_name: '',
-        trial_date: ''
-    });
-    //return revision history state
+    const [editData, setEditData] = useState({ feedback: '' });
+    const [workOrderTrials, setWorkOrderTrials] = useState({});
+    const [showTrialForm, setShowTrialForm] = useState({});
+    const [newTrial, setNewTrial] = useState({ trial_name: '', trial_date: '' });
     const [returningOrder, setReturningOrder] = useState(null);
-    const [returnData, setReturnData] = useState({
-        reason: '',
-        notes: '',
-        expectedDate: ''
-    });
+    const [returnData, setReturnData] = useState({ reason: '', notes: '', expectedDate: '' });
     const [showRevisionHistory, setShowRevisionHistory] = useState(null);
     const [revisionHistory, setRevisionHistory] = useState([]);
-    // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(25);
     const [paginatedOrders, setPaginatedOrders] = useState([]);
     const [totalPages, setTotalPages] = useState(0);
-    
     const navigate = useNavigate();
+
+    // --- Helper to clear messages after a delay ---
+    const showTemporaryMessage = (msg, isError = false) => {
+        setMessage(msg);
+        setTimeout(() => {
+            setMessage('');
+        }, isError ? 4000 : 1000); // Longer delay for errors
+    };
 
     const loadWorkOrders = useCallback(async () => {
         setLoading(true);
@@ -176,23 +173,21 @@ const WorkOrdersList = () => {
 
     const handleCompleteOrder = async (orderId) => {
         if (!completionDate) {
-            setMessage('Please select completion date');
+            showTemporaryMessage('Please select a completion date.', true);
             return;
         }
-
         setLoading(true);
         const response = await dentalLabService.updateWorkOrder(orderId, {
             completion_date: completionDate,
             status: 'completed'
         });
-
         if (response.data) {
-            setMessage('Work order marked as completed!');
+            showTemporaryMessage('Work order marked as completed!');
             setSelectedOrder(null);
             setCompletionDate('');
-            loadWorkOrders(); // This will also refresh bill status
+            loadWorkOrders();
         } else {
-            setMessage('Error updating work order');
+            showTemporaryMessage('Error updating work order', true);
         }
         setLoading(false);
     };
@@ -206,20 +201,22 @@ const WorkOrdersList = () => {
         loadTrialsForWorkOrder(order.id);
     };
 
-    const handleSaveEdit = async (orderId) => {
+const handleSaveEdit = async (orderId) => {
         setLoading(true);
         const response = await dentalLabService.updateWorkOrder(orderId, editData);
-
         if (response.data) {
-            setMessage('Work order updated successfully!');
+            showTemporaryMessage('Work order updated successfully!');
             setEditingOrder(null);
             setEditData({ feedback: '' });
             loadWorkOrders();
         } else {
-            setMessage('Error updating work order');
+            showTemporaryMessage('Error updating work order', true);
         }
         setLoading(false);
     };
+
+
+
 
     const handleCancelEdit = () => {
         // Reset trial form state for the current editing order
@@ -804,30 +801,26 @@ const WorkOrdersList = () => {
             alert('Please enter both trial name and date');
             return;
         }
-
         try {
             const trialData = {
                 work_order_id: editingOrder,
                 trial_name: newTrial.trial_name.trim(),
                 trial_date: newTrial.trial_date
             };
-
             const response = await dentalLabService.createTrial(trialData);
-            
             if (response.success) {
-                setMessage('Trial added successfully!');
+                showTemporaryMessage('Trial added successfully!');
                 setNewTrial({ trial_name: '', trial_date: '' });
                 setShowTrialForm(prev => ({ ...prev, [editingOrder]: false }));
-                // Reload trials for this work order
                 loadTrialsForWorkOrder(editingOrder);
             } else {
-                alert('Error adding trial: ' + response.error);
+                showTemporaryMessage('Error adding trial: ' + response.error, true);
             }
         } catch (error) {
-            console.error('Error adding trial:', error);
-            alert('Error adding trial: ' + error.message);
+            showTemporaryMessage('Error adding trial: ' + error.message, true);
         }
     };
+
 
     const handleDeleteTrial = async (trialId) => {
         if (!window.confirm('Are you sure you want to delete this trial?')) return;
@@ -979,7 +972,8 @@ const WorkOrdersList = () => {
                                 </button>
                             </div>
                         </div>
-                        <div className="card-body">
+                    <div className="card-body">
+                            {/* Message will now appear here, above the table */}
                             {message && (
                                 <div className={`alert ${message.includes('Error') ? 'alert-danger' : 'alert-success'}`}>
                                     {message}
@@ -1252,13 +1246,12 @@ const WorkOrdersList = () => {
                                 </div>
                             </div>
 
-                            {loading ? (
+                                          {loading ? (
                                 <div className="text-center py-4">
                                     <div className="spinner-border text-primary" role="status">
                                         <span className="visually-hidden">Loading...</span>
                                     </div>
                                     <div className="mt-2">Loading work orders...</div>
-                                    <small className="text-muted">This might take a moment if you have many orders</small>
                                 </div>
                             ) : message ? (
                                 <div className="text-center py-4">

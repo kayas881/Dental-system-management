@@ -123,7 +123,7 @@ const ProfessionalLayout = ({ children }) => {
                         />
                         <div className="company-info">
                             <div className="company-name">MARSHAL DENTAL ART</div>
-                            <div className="company-subtitle">CAD Camp Milling Center</div>
+                            <div className="company-subtitle">CAD Cam Milling Center</div>
                         </div>
                     </div>
 
@@ -239,7 +239,7 @@ const ProfessionalLayout = ({ children }) => {
                     <div className="row align-items-center">
                         <div className="col-md-6">
                             <div className="footer-info">
-                                <strong>MARSHAL DENTAL ART</strong> - CAD Camp Milling Center
+                                <strong>MARSHAL DENTAL ART</strong> - CAD Cam Milling Center
                                 <br />
                                 <small className="text-muted">
                                     📍Harmony Archade industrial estate building no B.106 behind pranayu hospital pimpalghar Bhiwandi-421311

@@ -30,22 +30,18 @@ const MonthlyBillingPage = () => {
             teeth = toothNumbers;
         } else if (typeof toothNumbers === 'string') {
             try {
-                // Try to parse as JSON first (in case it's a JSON string)
                 const parsed = JSON.parse(toothNumbers);
                 teeth = Array.isArray(parsed) ? parsed : [parsed];
             } catch (e) {
-                // If JSON parsing fails, treat as comma-separated string
                 teeth = toothNumbers.split(',').map(t => t.trim()).filter(t => t);
             }
         } else if (typeof toothNumbers === 'object' && toothNumbers !== null) {
-            // Handle case where it might be an object with array-like properties
             const values = Object.values(toothNumbers);
             teeth = values.length > 0 ? values : [toothNumbers];
         } else {
             teeth = [toothNumbers];
         }
         
-        // Count valid tooth numbers
         return teeth.filter(tooth => {
             const toothNum = parseInt(tooth);
             return !isNaN(toothNum) && toothNum > 0;
@@ -58,20 +54,16 @@ const MonthlyBillingPage = () => {
         
         let teeth = [];
         
-        // Handle different data formats
         if (Array.isArray(toothNumbers)) {
             teeth = toothNumbers;
         } else if (typeof toothNumbers === 'string') {
             try {
-                // Try to parse as JSON first (in case it's a JSON string)
                 const parsed = JSON.parse(toothNumbers);
                 teeth = Array.isArray(parsed) ? parsed : [parsed];
             } catch (e) {
-                // If JSON parsing fails, treat as comma-separated string
                 teeth = toothNumbers.split(',').map(t => t.trim()).filter(t => t);
             }
         } else if (typeof toothNumbers === 'object' && toothNumbers !== null) {
-            // Handle case where it might be an object with array-like properties
             const values = Object.values(toothNumbers);
             teeth = values.length > 0 ? values : [toothNumbers];
         } else {
@@ -84,19 +76,13 @@ const MonthlyBillingPage = () => {
             const toothNum = parseInt(tooth);
             
             if (!isNaN(toothNum)) {
-                if (toothNum >= 11 && toothNum <= 18) {
-                    quadrants.Q1.push(toothNum);
-                } else if (toothNum >= 21 && toothNum <= 28) {
-                    quadrants.Q2.push(toothNum);
-                } else if (toothNum >= 31 && toothNum <= 38) {
-                    quadrants.Q3.push(toothNum);
-                } else if (toothNum >= 41 && toothNum <= 48) {
-                    quadrants.Q4.push(toothNum);
-                }
+                if (toothNum >= 11 && toothNum <= 18) quadrants.Q1.push(toothNum);
+                else if (toothNum >= 21 && toothNum <= 28) quadrants.Q2.push(toothNum);
+                else if (toothNum >= 31 && toothNum <= 38) quadrants.Q3.push(toothNum);
+                else if (toothNum >= 41 && toothNum <= 48) quadrants.Q4.push(toothNum);
             }
         });
         
-        // Sort teeth in each quadrant
         Object.keys(quadrants).forEach(quad => {
             quadrants[quad].sort((a, b) => a - b);
         });
@@ -107,35 +93,44 @@ const MonthlyBillingPage = () => {
     // Component to render tooth quadrant boxes
     const ToothQuadrantDisplay = ({ toothNumbers }) => {
         const quadrants = groupTeethByQuadrants(toothNumbers);
-        
-        // Check if all quadrants are empty
         const hasAnyTeeth = Object.values(quadrants).some(q => q.length > 0);
         
-        if (!hasAnyTeeth && toothNumbers) {
-            // Fallback: show raw data if quadrants are empty but we have data
+        if (!hasAnyTeeth) {
             return (
-                <div style={{ 
-                    fontSize: '10px', 
-                    color: '#666',
-                    textAlign: 'center',
-                    padding: '4px'
-                }}>
-                    Raw: {JSON.stringify(toothNumbers)}
+                <div style={{ fontSize: '10px', color: '#666', textAlign: 'center', padding: '4px' }}>
+                    No Teeth
                 </div>
             );
         }
         
+        const cellStyle = {
+            border: '1px solid #ccc',
+            padding: '2px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textAlign: 'center',
+            lineHeight: '1',
+            // --- INCREASED FONT SIZE ---
+            fontSize: '15px' 
+        };
+
         return (
             <div style={{ 
-                display: 'grid', 
+              display: 'grid', 
                 gridTemplateColumns: '1fr 1fr', 
                 gridTemplateRows: '1fr 1fr', 
-                width: '50px', 
-                height: '35px', 
+                // --- INCREASED BOX SIZE ---
+                width: '60px', 
+                height: '40px', 
                 border: '1px solid #ddd',
-                fontSize: '7px',
-                fontFamily: 'monospace'
+                fontFamily: 'monospace',
+                fontWeight: 'bold'
             }}>
+
+
+        
+
                 {/* Q2 - Upper Left */}
                 <div style={{ 
                     border: '1px solid #ccc', 
@@ -148,7 +143,9 @@ const MonthlyBillingPage = () => {
                     lineHeight: '1',
                     fontSize: '6px'
                 }}>
+                          <div style={{...cellStyle, backgroundColor: quadrants.Q2.length > 0 ? '#e8f4f8' : '#f9f9f9'}}>
                     {quadrants.Q2.length > 0 ? quadrants.Q2.map(tooth => tooth.toString().slice(-1)).join('') : ''}
+                </div>
                 </div>
                 
                 {/* Q1 - Upper Right */}
@@ -163,7 +160,9 @@ const MonthlyBillingPage = () => {
                     lineHeight: '1',
                     fontSize: '6px'
                 }}>
+                                   <div style={{...cellStyle, backgroundColor: quadrants.Q1.length > 0 ? '#e8f4f8' : '#f9f9f9'}}>
                     {quadrants.Q1.length > 0 ? quadrants.Q1.map(tooth => tooth.toString().slice(-1)).join('') : ''}
+                </div>
                 </div>
                 
                 {/* Q3 - Lower Left */}
@@ -178,7 +177,9 @@ const MonthlyBillingPage = () => {
                     lineHeight: '1',
                     fontSize: '6px'
                 }}>
+                            <div style={{...cellStyle, backgroundColor: quadrants.Q3.length > 0 ? '#e8f4f8' : '#f9f9f9'}}>
                     {quadrants.Q3.length > 0 ? quadrants.Q3.map(tooth => tooth.toString().slice(-1)).join('') : ''}
+                </div>
                 </div>
                 
                 {/* Q4 - Lower Right */}
@@ -193,7 +194,9 @@ const MonthlyBillingPage = () => {
                     lineHeight: '1',
                     fontSize: '6px'
                 }}>
+                                    <div style={{...cellStyle, backgroundColor: quadrants.Q4.length > 0 ? '#e8f4f8' : '#f9f9f9'}}>
                     {quadrants.Q4.length > 0 ? quadrants.Q4.map(tooth => tooth.toString().slice(-1)).join('') : ''}
+                </div>
                 </div>
             </div>
         );
@@ -830,7 +833,7 @@ const MonthlyBillingPage = () => {
                 <img src="/logo.png" alt="Marshal Dental Art Logo" class="logo" onerror="this.style.display='none'" />
                 <div class="company-info">
                     <div class="company-name">MARSHAL DENTAL ART</div>
-                    <div class="company-subtitle">CAD Camp Milling Center</div>
+                    <div class="company-subtitle">CAD Cam Milling Center</div>
                 </div>
             </div>
             <div class="doctor-info">

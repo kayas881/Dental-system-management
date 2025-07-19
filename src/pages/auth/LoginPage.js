@@ -50,7 +50,7 @@ const LoginPage = () => {
                                     />
                                 </div>
                                 <h1 className="company-title">MARSHAL DENTAL ART</h1>
-                                <h2 className="company-subtitle">CAD Camp Milling Center</h2>
+                                <h2 className="company-subtitle">CAD Cam Milling Center</h2>
                                 <div className="company-details">
                                     <p className="address">📍Harmony Archade industrial estate building no B.106 behind pranayu hospital pimpalghar Bhiwandi-421311</p>
                                     <p className="contact">📞 9920559121 / 8692884526 / 8655131595</p>
