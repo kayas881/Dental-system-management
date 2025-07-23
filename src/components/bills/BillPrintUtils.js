@@ -243,7 +243,6 @@ export const handleSingleBillPrint = async (bill) => {
                     </tbody>
                 </table>
                 
-                ${generateBillFooter()}
             </div>
         </body>
         </html>
@@ -394,7 +393,7 @@ export const handleGroupedBillPrint = async (bill) => {
                         </tbody>
                     </table>
                     
-                    ${generateBillFooter()}
+                
                 </div>
             </body>
             </html>
@@ -505,7 +504,6 @@ export const printInitialBill = async (bill) => {
                                 `).join('')}
                             </tbody>
                         </table>
-                        ${generateBillFooter()}
                     </div>
                 </div>
             </body>
@@ -632,7 +630,6 @@ export const handleBulkBillPrint = async (bills) => {
                                     </tbody>
                                 </table>
                                 
-                                ${generateBillFooter()}
                             </div>
                         </div>
                     `;
@@ -686,7 +683,7 @@ export const handleBulkBillPrint = async (bills) => {
                                 </tbody>
                             </table>
                             
-                            ${generateBillFooter()}
+                          
                         </div>
                     </div>
                 `;
