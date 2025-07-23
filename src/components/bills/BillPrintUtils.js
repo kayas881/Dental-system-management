@@ -143,12 +143,7 @@ export const generateCompanyHeader = () => `
     </div>
 `;
 
-export const generateBillFooter = () => `
-    <div class="footer">
-        <div class="thank-you">🙏 Thank you for choosing MARSHAL DENTAL ART!</div>
-        <p><strong>Generated on:</strong> ${formatDate(new Date())}</p>
-    </div>
-`;
+
 
 export const handleSingleBillPrint = async (bill) => {
     console.log('=== SINGLE BILL PRINT DEBUG ===');
@@ -510,12 +505,6 @@ export const printInitialBill = async (bill) => {
                                 `).join('')}
                             </tbody>
                         </table>
-                        
-                        <div class="instructions">
-                            <p style="margin: 0; font-weight: bold; color: #2c5aa0;">📋 Instructions:</p>
-                            <p style="margin: 5px 0 0 0; font-size: 0.9em;">This is an initial bill sent with the product. Please keep this for your records. A final bill with amounts will be sent at month end for payment processing.</p>
-                        </div>
-                        
                         ${generateBillFooter()}
                     </div>
                 </div>
