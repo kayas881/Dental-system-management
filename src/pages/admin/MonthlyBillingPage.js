@@ -845,15 +845,15 @@ const MonthlyBillingPage = () => {
         <div class="bill-title">Monthly Consolidated Bill</div>
     </div>
     
-    <table>
+     <table>
         <thead>
             <tr>
                 <th class="serial-col">Serial #</th>
-                <th class="patient-col">Patient</th>
-                <th class="product-col">Product Quality</th>
-                <th class="tooth-col">Quadrants</th>
-                <th class="count-col">Count</th>
                 <th class="date-col">Date</th>
+                <th class="patient-col">Patient</th>
+                <th class="tooth-col">Quadrants</th>
+                <th class="product-col">Product Quality</th>
+                <th class="count-col">Count</th>
                 <th class="rate-col">Rate (₹)</th>
                 <th class="amount-col amount">Amount (₹)</th>
             </tr>
@@ -862,11 +862,11 @@ const MonthlyBillingPage = () => {
             ${billData.work_orders.map(order => `
                 <tr>
                     <td class="serial-col">${order.serial_number}</td>
-                    <td class="patient-col">${order.patient_name}</td>
-                    <td class="product-col">${order.product_quality}</td>
-                    <td class="tooth-col" style="text-align: center; vertical-align: middle;">${generateQuadrantHTML(order.tooth_numbers)}</td>
-                    <td class="count-col" style="text-align: center;"><strong>${countTeethForPrint(order.tooth_numbers)}</strong></td>
                     <td class="date-col">${new Date(order.completion_date).toLocaleDateString('en-GB')}</td>
+                    <td class="patient-col">${order.patient_name}</td>
+                    <td class="tooth-col" style="text-align: center; vertical-align: middle;">${generateQuadrantHTML(order.tooth_numbers)}</td>
+                    <td class="product-col">${order.product_quality}</td>
+                    <td class="count-col" style="text-align: center;"><strong>${countTeethForPrint(order.tooth_numbers)}</strong></td>
                     <td class="rate-col amount">${rates[order.id] ? parseFloat(rates[order.id]).toFixed(2) : '0.00'}</td>
                     <td class="amount-col amount">${order.amount ? parseFloat(order.amount).toFixed(2) : '0.00'}</td>
                 </tr>
