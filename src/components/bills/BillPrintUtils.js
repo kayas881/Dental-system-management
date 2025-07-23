@@ -429,68 +429,43 @@ export const printInitialBill = async (bill) => {
 
         let billItems = [];
 
-        // Handle grouped bills (multiple work orders)
         if (bill.is_grouped) {
-            console.log('=== INITIAL BILL DEBUG START ===');
-            console.log('Processing grouped initial bill for bill ID:', bill.id);
-
             const response = await dentalLabService.getWorkOrdersByBillId(bill.id);
-            console.log('Work orders response:', response);
-
             if (!response || response.error || !response.data) {
-                console.error('Failed to load work orders for initial bill:', response?.error);
                 throw new Error('Unable to load work order details for initial bill');
             }
-
             const workOrders = response.data;
-            console.log('Work orders for initial bill:', workOrders);
-
-            billItems = workOrders.map((order, index) => {
-                console.log(`Mapping work order ${index + 1} for initial bill:`, order);
-
-                const quality = order.product_quality || order.work_description || order.quality || 'N/A';
+            billItems = workOrders.map((order) => {
+                const quality = order.product_quality || order.work_description || 'N/A';
                 const date = order.completion_date || order.order_date || order.created_at;
-
-                const mappedItem = {
+                return {
                     date: formatDate(date),
                     patient: order.patient_name || 'N/A',
                     toothPosition: order.tooth_numbers || [],
                     quality: quality,
-                    showAmount: false
                 };
-
-                console.log(`Final mapped item ${index + 1} for initial bill:`, mappedItem);
-                return mappedItem;
             });
-
-            console.log('=== INITIAL BILL DEBUG END ===');
-
         } else {
-            // 🔄 New logic to fetch fresh tooth numbers
             let freshToothNumbers = bill.tooth_numbers || [];
-
             if (bill.work_order_id) {
                 try {
                     const response = await dentalLabService.getWorkOrder(bill.work_order_id);
                     if (response.success && response.data?.tooth_numbers) {
                         freshToothNumbers = response.data.tooth_numbers;
-                        console.log('Fetched fresh tooth numbers from work order:', freshToothNumbers);
                     }
                 } catch (error) {
                     console.warn("Couldn't fetch fresh tooth numbers for individual bill:", error);
                 }
             }
-
             billItems = [{
                 date: formatDate(bill.completion_date || bill.bill_date),
                 patient: bill.patient_name || 'N/A',
                 toothPosition: freshToothNumbers,
                 quality: bill.work_description || 'N/A',
-                showAmount: false
             }];
         }
         
-        const billContent = `
+          const billContent = `
             <!DOCTYPE html>
             <html>
             <head>
@@ -498,49 +473,52 @@ export const printInitialBill = async (bill) => {
                 <style>${getBillPrintStyles()}</style>
             </head>
             <body>
-                ${generateCompanyHeader()}
-                
-                <div class="doctor-section">
-                    <div class="doctor-name">🩺 Dr. ${bill.doctor_name}</div>
-                </div>
-                
-                <div class="bill-info">
-                    <p><strong>📋 Bill Number:</strong> ${bill.serial_number}</p>
-                    <p><strong>📅 Bill Date:</strong> ${formatDate(bill.bill_date)}</p>
-                    <p><strong>📝 Type:</strong> <span style="color: #2c5aa0; font-weight: bold;">INITIAL BILL (Product Delivery)</span></p>
-                    ${bill.notes ? `<p><strong>📝 Notes:</strong> ${bill.notes}</p>` : ''}
-                </div>
-                
-                <div class="table-with-footer">
-                    <table class="bill-table">
-                        <thead>
-                            <tr>
-                                <th>📅 Date</th>
-                                <th>👤 Patient Name</th>
-                                <th>🦷 Tooth Position</th>
-                                <th>⭐ Quality</th>
-                                <th>📝 Remarks</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${billItems.map(item => `
-                                <tr>
-                                    <td>${item.date}</td>
-                                    <td>${item.patient}</td>
-                                    <td>${generateToothQuadrantDisplay(item.toothPosition)}</td>
-                                    <td>${item.quality}</td>
-                                    <td style="border-bottom: 1px dotted #ccc; min-height: 30px;">&nbsp;</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
+                {/* --- FIX: Added a wrapper with the correct page-break style --- */}
+                <div class="bill-container" style="page-break-after: auto;">
+                    ${generateCompanyHeader()}
                     
-                    <div class="instructions">
-                        <p style="margin: 0; font-weight: bold; color: #2c5aa0;">📋 Instructions:</p>
-                        <p style="margin: 5px 0 0 0; font-size: 0.9em;">This is an initial bill sent with the product. Please keep this for your records. A final bill with amounts will be sent at month end for payment processing.</p>
+                    <div class="doctor-section">
+                        <div class="doctor-name">🩺 Dr. ${bill.doctor_name}</div>
                     </div>
                     
-                    ${generateBillFooter()}
+                    <div class="bill-info">
+                        <p><strong>📋 Bill Number:</strong> ${bill.serial_number}</p>
+                        <p><strong>📅 Bill Date:</strong> ${formatDate(bill.bill_date)}</p>
+                        <p><strong>📝 Type:</strong> <span style="color: #2c5aa0; font-weight: bold;">INITIAL BILL (Product Delivery)</span></p>
+                        ${bill.notes ? `<p><strong>📝 Notes:</strong> ${bill.notes}</p>` : ''}
+                    </div>
+                    
+                    <div class="table-with-footer">
+                        <table class="bill-table">
+                            <thead>
+                                <tr>
+                                    <th>📅 Date</th>
+                                    <th>👤 Patient Name</th>
+                                    <th>🦷 Tooth Position</th>
+                                    <th>⭐ Quality</th>
+                                    <th>📝 Remarks</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${billItems.map(item => `
+                                    <tr>
+                                        <td>${item.date}</td>
+                                        <td>${item.patient}</td>
+                                        <td>${generateToothQuadrantDisplay(item.toothPosition)}</td>
+                                        <td>${item.quality}</td>
+                                        <td style="border-bottom: 1px dotted #ccc; min-height: 30px;">&nbsp;</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                        
+                        <div class="instructions">
+                            <p style="margin: 0; font-weight: bold; color: #2c5aa0;">📋 Instructions:</p>
+                            <p style="margin: 5px 0 0 0; font-size: 0.9em;">This is an initial bill sent with the product. Please keep this for your records. A final bill with amounts will be sent at month end for payment processing.</p>
+                        </div>
+                        
+                        ${generateBillFooter()}
+                    </div>
                 </div>
             </body>
             </html>

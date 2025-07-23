@@ -39,7 +39,7 @@ const UserManagementPage = () => {
     const handleCreateUser = async (e) => {
         e.preventDefault();
         setLoading(true);
-        setMessage('');
+        setMessage(''); 
 
         if (!newUser.email || !newUser.password) {
             setMessage('Email and password are required');
