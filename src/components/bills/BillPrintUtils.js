@@ -473,7 +473,6 @@ export const printInitialBill = async (bill) => {
                 <style>${getBillPrintStyles()}</style>
             </head>
             <body>
-                {/* --- FIX: Added a wrapper with the correct page-break style --- */}
                 <div class="bill-container" style="page-break-after: auto;">
                     ${generateCompanyHeader()}
                     
