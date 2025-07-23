@@ -527,12 +527,12 @@ const MonthlyBillingPage = () => {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { 
+   body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             margin: 0; 
             padding: 12px; 
-            font-size: 11px; 
-            line-height: 1.2; 
+            font-size: 12px; /* Increased base font size */
+            line-height: 1.3; 
             color: #333;
             background: white;
         }
@@ -608,18 +608,18 @@ const MonthlyBillingPage = () => {
             text-align: center;
             width: 100%;
         }
-        table { 
+           table { 
             width: 100%; 
             border-collapse: collapse; 
             margin-bottom: 10px; 
-            font-size: 10px;
+            font-size: 11px; /* Increased table font size */
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             border-radius: 8px;
             overflow: hidden;
         }
         th, td { 
             border: 1px solid #ddd; 
-            padding: 3px 4px; 
+            padding: 4px 5px; /* Adjusted padding */
             text-align: left; 
             vertical-align: middle;
             word-wrap: break-word;
@@ -628,7 +628,7 @@ const MonthlyBillingPage = () => {
             background: linear-gradient(135deg, #0066cc 0%, #004499 100%);
             color: white;
             font-weight: bold; 
-            font-size: 9px;
+            font-size: 10px; /* Increased header font size */
             text-align: center;
             letter-spacing: 0.5px;
             text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
@@ -678,7 +678,7 @@ const MonthlyBillingPage = () => {
         }
         
         @media print {
-            @page {
+ @page {
                 size: A4;
                 margin: 6mm 5mm 6mm 5mm;
             }
@@ -690,8 +690,8 @@ const MonthlyBillingPage = () => {
             body { 
                 margin: 0; 
                 padding: 0; 
-                font-size: 9px; 
-                line-height: 1.1;
+                font-size: 10px; /* Increased base print font size */
+                line-height: 1.2;
                 background: white !important;
             }
             .header { 
@@ -729,7 +729,7 @@ const MonthlyBillingPage = () => {
                 margin-bottom: 0;
             }
             .doctor-info { 
-                font-size: 8px;
+                font-size: 16px;
                 background: rgba(255, 255, 255, 0.8) !important;
                 border-left: 1mm solid #0066cc;
                 border-radius: 1mm;
@@ -740,7 +740,7 @@ const MonthlyBillingPage = () => {
                 min-width: 35mm;
             }
             .doctor-info strong { 
-                font-size: 9px; 
+                font-size: 18px; 
                 color: #0066cc !important;
             }
             .bill-title { 
@@ -754,8 +754,8 @@ const MonthlyBillingPage = () => {
                 text-align: center;
                 width: 100%;
             }
-            table { 
-                font-size: 7px; 
+table { 
+                font-size: 9px; /* Increased table print font size */
                 margin-bottom: 1mm;
                 box-shadow: 0 0.5mm 1mm rgba(0,0,0,0.1);
                 border-radius: 1mm;
@@ -763,10 +763,10 @@ const MonthlyBillingPage = () => {
                 page-break-inside: auto;
             }
             th, td { 
-                padding: 1mm 1.5mm; 
-                font-size: 7px;
+                padding: 1.5mm 2mm; /* Increased print padding */
+                font-size: 9px; /* Increased cell print font size */
                 border: 0.2mm solid #ddd;
-                line-height: 1.1;
+                line-height: 1.2;
                 vertical-align: middle;
             }
             th { 
