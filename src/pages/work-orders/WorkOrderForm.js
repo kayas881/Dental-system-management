@@ -57,7 +57,8 @@ const WorkOrderForm = () => {
         order_date: new Date().toISOString().split('T')[0],
         expected_complete_date: '',
         feedback: '',
-        tooth_numbers: [] // Add tooth numbers
+        tooth_numbers: [], // Add tooth numbers
+        is_urgent: false // <-- Add this
     });
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
@@ -532,7 +533,21 @@ const WorkOrderForm = () => {
                                         </label>
                                     </div>
                                 </div>
-
+ <div className="mb-3">
+            <div className="form-check">
+                <input
+                    type="checkbox"
+                    className="form-check-input"
+                    name="is_urgent"
+                    id="is_urgent"
+                    checked={formData.is_urgent}
+                    onChange={handleInputChange}
+                />
+                <label className="form-check-label" htmlFor="is_urgent">
+                    🔥 Mark as Urgent
+                </label>
+            </div>
+        </div>
                                 <div className="mb-3">
                                     <label className="form-label">Feedback / Reason / Notes</label>
                                     <textarea

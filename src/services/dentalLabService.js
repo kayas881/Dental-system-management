@@ -44,7 +44,20 @@ const formatPatientToothSummary = (patient_name, tooth_numbers) => {
     const sortedTeeth = [...tooth_numbers].sort((a, b) => a - b);
     return `${patient_name} → ${tooth_numbers.length} teeth: ${sortedTeeth.join(', ')}`;
 };
+const deleteWorkOrder = async (id) => {
+    try {
+        const { error } = await supabase
+            .from('work_orders')
+            .delete()
+            .eq('id', id);
 
+        if (error) throw error;
+        return { success: true };
+    } catch (error) {
+        console.error('Delete work order error:', error);
+        return { success: false, error: error.message };
+    }
+};
 // Work Orders Management
 const createWorkOrder = async (workOrderData) => {
     try {
@@ -1362,6 +1375,23 @@ const updateTrial = async (trialId, trialData) => {
     }
 };
 
+const toggleUrgentStatus = async (id, currentStatus) => {
+    try {
+        const { data, error } = await supabase
+            .from('work_orders')
+            .update({ is_urgent: !currentStatus })
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return { success: true, data };
+    } catch (error) {
+        console.error('Error toggling urgent status:', error);
+        return { success: false, error: error.message };
+    }
+};
+
 const deleteTrial = async (trialId) => {
     try {
         const userId = await authService.getUserId();
@@ -1404,6 +1434,9 @@ getWorkOrdersWithBatchInfo,
     getBatchWorkOrders,
     canBatchBeBilled,
     completeRevision,
+    deleteWorkOrder,
+    toggleUrgentStatus,
+
     
     // Bills
     createBill,

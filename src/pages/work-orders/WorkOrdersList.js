@@ -5,6 +5,7 @@ import WorkOrdersTable from '../../components/WorkOrdersTable';
 
 const WorkOrdersList = () => {
     // ... (keep all existing useState hooks as they are)
+    const [deletingOrder, setDeletingOrder] = useState(null);
     const [workOrders, setWorkOrders] = useState([]);
     const [filteredWorkOrders, setFilteredWorkOrders] = useState([]);
     const [billStatus, setBillStatus] = useState({});
@@ -19,7 +20,8 @@ const WorkOrdersList = () => {
         doctorName: '',
         productQuality: 'all',
         billStatus: 'all',
-        overdue: false
+        overdue: false,
+        urgentOnly: false // <-- Add new filter state
     });
     const [showFilters, setShowFilters] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -47,6 +49,24 @@ const WorkOrdersList = () => {
         setTimeout(() => {
             setMessage('');
         }, isError ? 4000 : 1000); // Longer delay for errors
+    };
+
+     const handleDeleteWorkOrder = async () => {
+        if (!deletingOrder) return;
+
+        setLoading(true);
+        const orderToDelete = deletingOrder; // Keep a reference
+        setDeletingOrder(null); // Close the modal immediately
+
+        const response = await dentalLabService.deleteWorkOrder(orderToDelete.id);
+        
+        if (response.success) {
+            showTemporaryMessage(`Work order ${orderToDelete.serial_number} deleted successfully!`);
+            await loadWorkOrders(); // Refresh the list
+        } else {
+            showTemporaryMessage(`Error deleting work order: ${response.error}`, true);
+        }
+        setLoading(false);
     };
 
     const loadWorkOrders = useCallback(async () => {
@@ -679,11 +699,15 @@ const handleSaveEdit = async (orderId) => {
                 const expectedDate = new Date(order.expected_complete_date);
                 return expectedDate < now;
             });
+            
+        }
+        
+       if (currentFilters.urgentOnly) {
+            filtered = filtered.filter(order => order.is_urgent);
         }
         
         setFilteredWorkOrders(filtered);
-        // Update pagination after filtering will be handled by useEffect
-    }, [workOrders, billStatus, searchQuery, filters]);
+    },[workOrders, billStatus, searchQuery, filters, workOrderTrials]);
 
     const handleSearch = useCallback((query) => {
         setSearchQuery(query);
@@ -707,7 +731,8 @@ const handleSaveEdit = async (orderId) => {
             doctorName: '',
             productQuality: 'all',
             billStatus: 'all',
-            overdue: false
+            overdue: false,
+            urgentOnly: false // <-- Add to reset
         };
         setFilters(defaultFilters);
         setSearchQuery('');
@@ -724,6 +749,7 @@ const handleSaveEdit = async (orderId) => {
         if (filters.productQuality !== 'all') count++;
         if (filters.billStatus !== 'all') count++;
         if (filters.overdue) count++;
+        if (filters.urgentOnly) count++; // <-- Add to count
         if (searchQuery.trim()) count++;
         return count;
     };
@@ -737,7 +763,7 @@ const handleSaveEdit = async (orderId) => {
     // Update filtered results when workOrders or billStatus change
     useEffect(() => {
         applyFilters(searchQuery, filters);
-    }, [workOrders, billStatus, applyFilters]);
+    }, [workOrders, billStatus, applyFilters, searchQuery, filters]); 
 
     // Initialize pagination when filteredWorkOrders changes
     useEffect(() => {
@@ -930,7 +956,15 @@ const handleSaveEdit = async (orderId) => {
             [name]: value
         }));
     };
-
+ const handleToggleUrgent = async (order) => {
+        const response = await dentalLabService.toggleUrgentStatus(order.id, order.is_urgent);
+        if (response.success) {
+            showTemporaryMessage(`Urgent status updated for ${order.serial_number}.`);
+            loadWorkOrders(); // Refresh the list
+        } else {
+            showTemporaryMessage('Error updating urgent status.', true);
+        }
+    };
     return (
         <div className="container mt-4">
             {/* Unified Direct Billing Button - Show if orders are selected */}
@@ -1195,6 +1229,18 @@ const handleSaveEdit = async (orderId) => {
                                                                 ⚠️ Show only overdue orders
                                                             </label>
                                                         </div>
+                                                         <div className="form-check">
+                                    <input
+                                        className="form-check-input"
+                                        type="checkbox"
+                                        id="urgentOnlyFilter"
+                                        checked={filters.urgentOnly}
+                                        onChange={(e) => handleFilterChange('urgentOnly', e.target.checked)}
+                                    />
+                                    <label className="form-check-label small" htmlFor="urgentOnlyFilter">
+                                        🔥 Show only urgent orders
+                                    </label>
+                                </div>
                                                     </div>
                                                 </div>
                                                 
@@ -1304,7 +1350,8 @@ const handleSaveEdit = async (orderId) => {
                                         handleTrialInputChange={handleTrialInputChange}
                                         handleAddTrial={handleAddTrial}
                                         handleDeleteTrial={handleDeleteTrial}
-                        
+                                        setDeletingOrder={setDeletingOrder}
+                        handleToggleUrgent={handleToggleUrgent}
                                     />
 
                                     {/* Selection Summary */}
@@ -1493,6 +1540,46 @@ const handleSaveEdit = async (orderId) => {
                     </div>
                 </div>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {deletingOrder && (
+                <div className="modal show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>
+                    <div className="modal-dialog">
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h5 className="modal-title">Confirm Deletion</h5>
+                                <button
+                                    type="button"
+                                    className="btn-close"
+                                    onClick={() => setDeletingOrder(null)}
+                                ></button>
+                            </div>
+                            <div className="modal-body">
+                                <p>Are you sure you want to permanently delete work order <strong>{deletingOrder.serial_number}</strong> for patient <strong>{deletingOrder.patient_name}</strong>?</p>
+                                <div className="alert alert-danger">
+                                    <strong>Warning:</strong> This action cannot be undone.
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary"
+                                    onClick={() => setDeletingOrder(null)}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-danger"
+                                    onClick={handleDeleteWorkOrder}
+                                >
+                                    Yes, Delete Work Order
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
                        {/* Return Order Modal */}
             {returningOrder && (
                 <div className="modal show d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}}>

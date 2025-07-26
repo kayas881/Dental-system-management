@@ -40,7 +40,10 @@ const WorkOrdersTable = ({
     handleDeleteTrial,
     handleReturnOrder,
     handleCompleteRevision,
-    loadRevisionHistory
+    loadRevisionHistory,
+    setDeletingOrder, // <-- Add this new prop
+    handleToggleUrgent,
+    
 }) => {
     const [expandedOrders, setExpandedOrders] = React.useState(new Set());
     
@@ -157,11 +160,13 @@ const getStatusBadge = (status) => {
                                             </span>
                                         )}
                                     </div>
+                                    
                                     <div className="small text-muted">
                                         <strong>Dr. {order.doctor_name}</strong>
                                     </div>
                                 </div>
                             </div>
+                                 {order.is_urgent && <span className="badge bg-danger ms-2">🔥 Urgent</span>}
                             <div className="d-flex align-items-center">
                                 <span className={`badge me-2 ${getStatusBadge(order.status).class}`}>
                                     {getStatusBadge(order.status).text}
@@ -306,6 +311,25 @@ const getStatusBadge = (status) => {
                                                 ✓
                                             </button>
                                         )}
+                                                                    <button
+                                className={`btn btn-sm ${order.is_urgent ? 'btn-warning' : 'btn-outline-warning'}`}
+                                onClick={(e) => { e.stopPropagation(); handleToggleUrgent(order); }}
+                                title="Toggle Urgent Status"
+                            >
+                                🔥
+                            </button>
+                                         <button
+                                        className="btn btn-outline-danger btn-sm"
+                                        onClick={(e) => { e.stopPropagation(); setDeletingOrder(order); }}
+                                        disabled={order.status === 'completed' || billStatus[order.id]?.hasBill}
+                                        title={
+                                            order.status === 'completed' ? 'Cannot delete completed order' :
+                                            billStatus[order.id]?.hasBill ? 'Cannot delete billed order' :
+                                            'Delete work order'
+                                        }
+                                    >
+                                        🗑️
+                                    </button>
                                     </div>
                                 )}
                             </div>
@@ -593,6 +617,7 @@ const getStatusBadge = (status) => {
                                     >
                                         Cancel
                                     </button>
+                                    
                                 </div>
                             </div>
                         )}
@@ -649,6 +674,7 @@ const getStatusBadge = (status) => {
                                         <td>
                                             <div>
                                                 <strong className="text-primary">{order.serial_number}</strong>
+                                                {order.is_urgent && <span className="badge bg-danger ms-2">🔥 Urgent</span>}
                                                 {order.batch_id && (
                                                     <div>
                                                         <span className="badge bg-info badge-sm">
@@ -796,6 +822,26 @@ const getStatusBadge = (status) => {
                                                 ✓
                                             </button>
                                         )}
+                                        <button
+                                            className={`btn btn-sm ${order.is_urgent ? 'btn-warning' : 'btn-outline-warning'}`}
+                                            onClick={() => handleToggleUrgent(order)}
+                                            title="Toggle Urgent Status"
+                                        >
+                                            🔥
+                                        </button>
+
+                                                        <button
+                                                            className="btn btn-outline-danger"
+                                                            onClick={() => setDeletingOrder(order)}
+                                                            disabled={order.status === 'completed' || billStatus[order.id]?.hasBill}
+                                                            title={
+                                                                order.status === 'completed' ? 'Cannot delete completed order' :
+                                                                billStatus[order.id]?.hasBill ? 'Cannot delete billed order' :
+                                                                'Delete work order'
+                                                            }
+                                                        >
+                                                            🗑️
+                                                        </button>
                                                     </>
                                                 )}
                                             </div>

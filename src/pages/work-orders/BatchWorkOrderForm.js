@@ -26,6 +26,7 @@ const BatchWorkOrderForm = () => {
             trial_date_1: '',
             trial_date_2: '',
             feedback: '',
+            is_urgent: false, // <-- Add this
             tooth_numbers: [] // Add tooth selection for each patient
         }
     ]);
@@ -81,6 +82,7 @@ const BatchWorkOrderForm = () => {
             trial_date_1: '',
             trial_date_2: '',
             feedback: '',
+            is_urgent: false, // <-- Add this
             tooth_numbers: [] // Add tooth selection for new orders
         };
         setWorkOrders(prev => [...prev, newOrder]);
@@ -368,6 +370,17 @@ const BatchWorkOrderForm = () => {
                                                             </label>
                                                         </div>
                                                     </div>
+                                                     <div className="form-check">
+                <input
+                    type="checkbox"
+                    className="form-check-input"
+                    checked={order.is_urgent}
+                    onChange={(e) => handleWorkOrderChange(index, 'is_urgent', e.target.checked)}
+                />
+                <label className="form-check-label">
+                    🔥 Mark as Urgent
+                </label>
+            </div>
                                                 </div>
                                             </div>
 

@@ -6,12 +6,10 @@ import { useNavigate } from "react-router-dom";
 const StaffDashboard = () => {
     const [email, setEmail] = useState('');
     const [userRole, setUserRole] = useState('');
-    const [userId, setUserId] = useState(null);
     const [workOrderStats, setWorkOrderStats] = useState({
         total: 0,
         inProgress: 0,
-        completed: 0,
-        pendingBills: 0
+        completed: 0
     });
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
@@ -24,35 +22,26 @@ const StaffDashboard = () => {
             const email = authService.getUserEmail();
             setEmail(email);
 
-            const id = await authService.getUserId();
-            setUserId(id);
 
-            if (id) {
-                await loadStats(id);
-            }
+            // Load stats regardless of user ID
+            await loadStats();
         };
 
         loadUserData();
     }, []);
 
-    const loadStats = async (currentUserId) => {
+    const loadStats = async () => {
         setLoading(true);
         try {
-            // Fetch all work orders and filter by the current user
             const workOrdersResponse = await dentalLabService.getAllWorkOrders();
-            // Fetch only the bills created by the current user
-            const billsResponse = await dentalLabService.getMyBills();
 
-            if (workOrdersResponse.data && billsResponse.data) {
-                const myOrders = workOrdersResponse.data.filter(o => o.created_by === currentUserId);
-                const myBills = billsResponse.data; // This is already filtered by the service
+            if (workOrdersResponse.data) {
+                const allOrders = workOrdersResponse.data;
 
                 setWorkOrderStats({
-                    total: myOrders.length,
-                    inProgress: myOrders.filter(o => o.status === 'in_progress').length,
-                    completed: myOrders.filter(o => o.status === 'completed').length,
-                    // Correctly count pending bills for the current user based on status
-                    pendingBills: myBills.filter(b => b.status === 'pending').length
+                    total: allOrders.length,
+                    inProgress: allOrders.filter(o => o.status === 'in_progress').length,
+                    completed: allOrders.filter(o => o.status === 'completed').length
                 });
             }
         } catch (error) {
@@ -93,46 +82,40 @@ const StaffDashboard = () => {
                                         <strong>Role:</strong>
                                         <span className="badge bg-primary ms-2">{userRole}</span>
                                     </li>
-                                    <li className="list-group-item">
-                                        <strong>Access Level:</strong> Staff Member
-                                    </li>
                                 </ul>
                             </div>
                         </div>
 
                         <div className="row">
-                            <div className="col-md-3">
-                                <div className="card text-center bg-primary text-white">
+                            <div className="col-md-4 mb-3">
+                                <div className="card text-center bg-primary text-white h-100">
                                     <div className="card-body">
                                         <h3>{loading ? '...' : workOrderStats.total}</h3>
-                                        <p className="mb-0">My Total Orders</p>
+                                        <p className="mb-0">Total Orders</p>
                                     </div>
                                 </div>
                             </div>
-                            <div className="col-md-3">
-                                <div className="card text-center bg-warning text-white">
+                            <div className="col-md-4 mb-3">
+                                <div className="card text-center bg-warning text-dark h-100">
                                     <div className="card-body">
                                         <h3>{loading ? '...' : workOrderStats.inProgress}</h3>
-                                        <p className="mb-0">My Orders In Progress</p>
+                                        <p className="mb-0">Orders In Progress</p>
                                     </div>
                                 </div>
                             </div>
-                            <div className="col-md-3">
-                                <div className="card text-center bg-success text-white">
+                            <div className="col-md-4 mb-3">
+                                <div className="card text-center bg-success text-white h-100">
                                     <div className="card-body">
                                         <h3>{loading ? '...' : workOrderStats.completed}</h3>
-                                        <p className="mb-0">My Orders Completed</p>
+                                        <p className="mb-0">Orders Completed</p>
                                     </div>
                                 </div>
                             </div>
-
                         </div>
 
-                        {/* ... (rest of the component remains the same) ... */}
-
                         <div className="row mt-4">
-                            <div className="col-md-6">
-                                <div className="card">
+                            <div className="col-md-6 mb-3">
+                                <div className="card h-100">
                                     <div className="card-header">
                                         <h5>Work Orders</h5>
                                     </div>
@@ -162,8 +145,8 @@ const StaffDashboard = () => {
                                 </div>
                             </div>
 
-                            <div className="col-md-6">
-                                <div className="card">
+                            <div className="col-md-6 mb-3">
+                                <div className="card h-100">
                                     <div className="card-header">
                                         <h5>Billing</h5>
                                     </div>
@@ -171,8 +154,7 @@ const StaffDashboard = () => {
                                         <p>Create bills for completed work orders.</p>
                                         <div className="alert alert-info">
                                             <small>
-                                                <strong>Note:</strong> You can create bills after work completion.
-                                                Admin will add pricing information.
+                                                <strong>Note:</strong> You can create bills after work completion. Admin will add pricing information.
                                             </small>
                                         </div>
                                         <div className="d-grid gap-2">
@@ -182,54 +164,6 @@ const StaffDashboard = () => {
                                             >
                                                 Work Orders & Direct Billing
                                             </button>
-                                            <p className="text-muted small mt-2 mb-0">
-                                                Select work orders from the same doctor and create bills directly - no need for separate billing pages!
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="row mt-4">
-                            <div className="col-12">
-                                <div className="card">
-                                    <div className="card-header">
-                                        <h5>Workflow</h5>
-                                    </div>
-                                    <div className="card-body">
-                                        <p className="text-muted">
-                                            Follow this workflow for processing dental lab orders:
-                                        </p>
-                                        <div className="row">
-                                            <div className="col-md-3">
-                                                <div className="bg-light p-3 rounded text-center">
-                                                    <strong>1. Create Order</strong>
-                                                    <br />
-                                                    <small>Enter patient & work details</small>
-                                                </div>
-                                            </div>
-                                            <div className="col-md-3">
-                                                <div className="bg-light p-3 rounded text-center">
-                                                    <strong>2. Process Work</strong>
-                                                    <br />
-                                                    <small>Complete the dental work</small>
-                                                </div>
-                                            </div>
-                                            <div className="col-md-3">
-                                                <div className="bg-light p-3 rounded text-center">
-                                                    <strong>3. Mark Complete</strong>
-                                                    <br />
-                                                    <small>Update completion date</small>
-                                                </div>
-                                            </div>
-                                            <div className="col-md-3">
-                                                <div className="bg-light p-3 rounded text-center">
-                                                    <strong>4. Create Bill</strong>
-                                                    <br />
-                                                    <small>Generate bill for admin</small>
-                                                </div>
-                                            </div>
                                         </div>
                                     </div>
                                 </div>
