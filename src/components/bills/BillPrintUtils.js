@@ -86,49 +86,44 @@ export const generateToothQuadrantDisplay = (toothNumbers) => {
 
 export const getBillPrintStyles = () => `
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background-color: #fff; color: #333; }
-    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; padding: 20px; background: linear-gradient(135deg, #f8f9fa, #e9ecef); border-radius: 10px; border: 1px solid #dee2e6; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, #f8f9fa, #e9ecef); border-radius: 10px; border: 1px solid #dee2e6; }
     .company-info { flex: 1; }
-    .company-logo { width: 100px; height: 100px; object-fit: contain; border: 2px solid #2c5aa0; border-radius: 10px; padding: 8px; background: white; margin-left: 20px; }
-    .company-name { font-size: 2.4em; font-weight: bold; color: #2c5aa0; margin: 0 0 5px 0; letter-spacing: 1px; text-transform: uppercase; }
-    .company-subtitle { font-size: 1.2em; color: #666; margin: 0 0 15px 0; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
-    .company-address { font-size: 1em; color: #555; margin: 5px 0; line-height: 1.5; }
-    .company-contact { font-size: 1.1em; color: #2c5aa0; font-weight: 600; margin: 8px 0 0 0; }
-    .doctor-section { background: #2c5aa0; color: white; padding: 15px 20px; margin: 20px 0; border-radius: 8px; }
-    .doctor-name { font-size: 1.5em; font-weight: bold; margin: 0; }
-    .bill-table { width: 100%; border-collapse: collapse; margin: 20px 0; box-shadow: 0 3px 10px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; }
-    .bill-table th { background: linear-gradient(135deg, #2c5aa0, #3d6eb5); color: white; padding: 15px 12px; text-align: left; font-weight: bold; font-size: 1em; }
-    .bill-table td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+    .company-logo { width: 80px; height: 80px; object-fit: contain; border: 2px solid #2c5aa0; border-radius: 10px; padding: 8px; background: white; margin-left: 20px; }
+    .company-name { font-size: 2.2em; font-weight: bold; color: #2c5aa0; margin: 0 0 5px 0; }
+    .company-subtitle { font-size: 1.1em; color: #666; margin: 0 0 10px 0; }
+    .company-address { font-size: 0.9em; color: #555; }
+    .doctor-section { background: #2c5aa0; color: white; padding: 12px 15px; margin: 15px 0; border-radius: 8px; }
+    .doctor-name { font-size: 1.3em; font-weight: bold; margin: 0; }
+    .bill-table { width: 100%; border-collapse: collapse; margin: 15px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; }
+    .bill-table th { background: linear-gradient(135deg, #2c5aa0, #3d6eb5); color: white; padding: 12px 10px; text-align: left; }
+    .bill-table td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
     .bill-table tbody tr:nth-child(even) { background-color: #f8f9fa; }
-    .bill-table tbody tr:hover { background-color: #e3f2fd; }
-    .total-row { background: linear-gradient(135deg, #28a745, #20c997) !important; color: white; font-weight: bold; font-size: 1.2em; }
-    .amount { text-align: right; font-weight: 600; font-family: 'Courier New', monospace; }
-    .bill-info { margin-bottom: 25px; background: #fff; padding: 20px; border: 1px solid #dee2e6; border-radius: 8px; }
-    .bill-info p { margin: 8px 0; font-size: 1em; }
-    .bill-info strong { color: #2c5aa0; }
-    .footer { margin-top: 40px; text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px; }
-    .thank-you { font-size: 1.2em; color: #2c5aa0; font-weight: 600; margin-bottom: 10px; }
-    .instructions { margin-top: 30px; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #2c5aa0; }
-    .bill-content { page-break-inside: avoid; }
-    .table-with-footer { page-break-inside: avoid; }
+    .total-row { background: linear-gradient(135deg, #28a745, #20c997) !important; color: white; font-weight: bold; font-size: 1.1em; }
+    .amount { text-align: right; font-weight: 600; }
+    .bill-info { margin-bottom: 20px; }
+    .bill-info p { margin: 5px 0; }
+    .footer { margin-top: 30px; text-align: center; padding-top: 15px; border-top: 1px solid #ccc; }
+    .thank-you { font-size: 1.1em; font-weight: 600; }
+    .instructions { margin-top: 20px; padding: 10px; background: #f8f9fa; border-radius: 5px; border-left: 3px solid #2c5aa0; }
+    
     @media print {
-        body { margin: 15px; font-size: 14px; }
-        .header { page-break-inside: avoid; page-break-after: avoid; }
-        .doctor-section { page-break-inside: avoid; page-break-after: avoid; }
-        .bill-info { page-break-inside: avoid; page-break-after: avoid; }
-        .bill-table { page-break-inside: auto; }
-        .bill-table thead { display: table-header-group; }
-        .bill-table tbody { page-break-inside: auto; }
-        .bill-table tr { page-break-inside: avoid; }
-        .total-row { page-break-before: avoid; }
-        .footer { page-break-before: avoid; page-break-inside: avoid; }
-        .instructions { page-break-before: avoid; page-break-inside: avoid; }
-        .table-with-footer { page-break-inside: avoid; }
-        .company-logo { width: 80px; height: 80px; }
+        /* --- MODIFIED FOR COMPACT PRINTING --- */
+        @page {
+            size: A4;
+            margin: 5mm; /* Reduced page margins */
+        }
+        body { margin: 0; font-size: 12px; }
+        .header { margin-bottom: 15px; padding: 10px; }
+        .company-logo { width: 60px; height: 60px; }
+        .doctor-section { padding: 10px 12px; margin: 10px 0; }
+        .bill-info { margin-bottom: 15px; }
+        .bill-table { margin: 15px 0; }
+        .bill-table th { padding: 8px 10px; }
+        .bill-table td { padding: 8px 10px; }
         .bill-container { page-break-after: always; }
         .bill-container:last-child { page-break-after: auto; }
-        /* Ensure table footer and instructions stay together */
-        .bill-table tbody tr:last-child { page-break-after: avoid; }
-        .total-row + * { page-break-before: avoid; }
+        .footer { display: none; } /* Hide individual footers in bulk print */
+        .bulk-print-footer { display: block !important; margin-top: 20px; text-align: center; font-size: 12px; }
     }
 `;
 
@@ -544,7 +539,6 @@ export const handleBulkBillPrint = async (bills) => {
         alert('Popup blocked! Please allow popups for this site.');
         return;
     }
-
     try {
         // Generate content for each bill
         const billContents = await Promise.all(bills.map(async (bill, index) => {
@@ -585,53 +579,39 @@ export const handleBulkBillPrint = async (bills) => {
                     }
                     
                     billHtml = `
-                        <div class="bill-container" style="page-break-after: ${index < bills.length - 1 ? 'always' : 'auto'}; margin-bottom: 40px;">
-                            ${generateCompanyHeader()}
-                            
-                            <div class="doctor-section">
-                                <div class="doctor-name">🩺 Dr. ${bill.doctor_name}</div>
-                            </div>
-                            
-                            <div class="bill-info">
-                                <p><strong>📋 Bill Number:</strong> ${bill.serial_number}</p>
-                                <p><strong>📅 Bill Date:</strong> ${formatDate(bill.bill_date)}</p>
-                                ${bill.notes ? `<p><strong>📝 Notes:</strong> ${bill.notes}</p>` : ''}
-                            </div>
-                            
-                            <div class="table-with-footer">
-                                <table class="bill-table">
-                                    <thead>
-                                        <tr>
-                                            <th>📅 Date</th>
-                                            <th>👤 Patient Name</th>
-                                            <th>🦷 Tooth Position</th>
-                                            <th>⭐ Quality</th>
-                                            <th class="amount">💰 Amount</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${billItems.map(item => `
-                                            <tr>
-                                                <td>${item.date}</td>
-                                                <td>${item.patient}</td>
-                                                <td>${generateToothQuadrantDisplay(item.toothPosition)}</td>
-                                                <td>${item.quality}</td>
-                                                <td class="amount">₹${item.amount}</td>
-                                            </tr>
-                                        `).join('')}
-                                        <tr class="total-row">
-                                            <td colspan="4" style="text-align: right; padding-right: 20px;">
-                                                <strong>🏆 GRAND TOTAL</strong>
-                                            </td>
-                                            <td class="amount">
-                                                <strong>₹${bill.amount || '0.00'}</strong>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                                
-                            </div>
-                        </div>
+                       <div class="bill-container" style="page-break-inside: avoid; margin-bottom: 20px;">
+                    ${generateCompanyHeader()}
+                    <div class="doctor-section">
+                        <div class="doctor-name">🩺 Dr. ${bill.doctor_name}</div>
+                    </div>
+                    <div class="bill-info">
+                        <p><strong>📋 Bill Number:</strong> ${bill.serial_number}</p>
+                        <p><strong>📅 Bill Date:</strong> ${formatDate(bill.bill_date)}</p>
+                        <p><strong>📝 Type:</strong> <span style="font-weight: bold;">INITIAL BILL</span></p>
+                    </div>
+                    <table class="bill-table">
+                        <thead>
+                            <tr>
+                                <th>📅 Date</th>
+                                <th>👤 Patient Name</th>
+                                <th>🦷 Tooth Position</th>
+                                <th>⭐ Quality</th>
+                                <th>📝 Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${billItems.map(item => `
+                                <tr>
+                                    <td>${item.date}</td>
+                                    <td>${item.patient}</td>
+                                    <td>${generateToothQuadrantDisplay(item.toothPosition)}</td>
+                                    <td>${item.quality}</td>
+                                    <td style="min-height: 30px;">&nbsp;</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
                     `;
                 } catch (error) {
                     console.error('Error processing grouped bill:', error);
@@ -699,11 +679,14 @@ export const handleBulkBillPrint = async (bills) => {
             <!DOCTYPE html>
             <html>
             <head>
-                <title>Bulk Bills Print - ${bills.length} Bills</title>
-                <style>${bulkPrintStyles}</style>
+                <title>Bulk Initial Bills Print</title>
+                <style>${getBillPrintStyles()}</style>
             </head>
             <body>
                 ${billContents.join('')}
+                <div class="footer bulk-print-footer" style="display: none;">
+                    <p>Generated on: ${formatDate(new Date())}</p>
+                </div>
             </body>
             </html>
         `;

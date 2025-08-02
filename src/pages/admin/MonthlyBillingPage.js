@@ -498,17 +498,17 @@ const MonthlyBillingPage = () => {
             const quadrants = groupTeethByQuadrants(toothNumbers);
             
             return `
-                <div style="display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; width: 50px; height: 25px; border: 1px solid #333; font-size: 6px; font-family: monospace; margin: 0 auto;">
-                    <div style="border: 1px solid #666; padding: 0; background-color: ${quadrants.Q2.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 7px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; width: 50px; height: 25px; border: 1px solid #333; font-size: 9px; font-family: monospace; margin: 0 auto; font-weight: bold;">
+                    <div style="border: 1px solid #666; padding: 0; background-color: ${quadrants.Q2.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 9px; font-weight: bold;">
                         ${quadrants.Q2.length > 0 ? quadrants.Q2.map(tooth => tooth.toString().slice(-1)).join('') : ''}
                     </div>
-                    <div style="border: 1px solid #666; padding: 0; background-color: ${quadrants.Q1.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 7px;">
+                    <div style="border: 1px solid #666; padding: 0; background-color: ${quadrants.Q1.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 9px; font-weight: bold;">
                         ${quadrants.Q1.length > 0 ? quadrants.Q1.map(tooth => tooth.toString().slice(-1)).join('') : ''}
                     </div>
-                    <div style="border: 1px solid #666; padding: 0; background-color: ${quadrants.Q3.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 7px;">
+                    <div style="border: 1px solid #666; padding: 0; background-color: ${quadrants.Q3.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 9px; font-weight: bold;">
                         ${quadrants.Q3.length > 0 ? quadrants.Q3.map(tooth => tooth.toString().slice(-1)).join('') : ''}
                     </div>
-                    <div style="border: 1px solid #666; padding: 0; background-color: ${quadrants.Q4.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 7px;">
+                    <div style="border: 1px solid #666; padding: 0; background-color: ${quadrants.Q4.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 9px; font-weight: bold;">
                         ${quadrants.Q4.length > 0 ? quadrants.Q4.map(tooth => tooth.toString().slice(-1)).join('') : ''}
                     </div>
                 </div>
@@ -755,7 +755,7 @@ const MonthlyBillingPage = () => {
                 width: 100%;
             }
 table { 
-                font-size: 9px; /* Increased table print font size */
+                font-size: 11px; /* Increased table font size for better visibility */
                 margin-bottom: 1mm;
                 box-shadow: 0 0.5mm 1mm rgba(0,0,0,0.1);
                 border-radius: 1mm;
@@ -763,16 +763,16 @@ table {
                 page-break-inside: auto;
             }
             th, td { 
-                padding: 1.5mm 2mm; /* Increased print padding */
-                font-size: 9px; /* Increased cell print font size */
+                padding: 1mm 1.5mm; /* Optimized padding for space efficiency */
+                font-size: 11px; /* Increased font size for better readability */
                 border: 0.2mm solid #ddd;
-                line-height: 1.2;
+                line-height: 1.1; /* Slightly tighter line height */
                 vertical-align: middle;
             }
             th { 
                 background: linear-gradient(135deg, #0066cc 0%, #004499 100%) !important;
                 color: white !important;
-                font-size: 7px;
+                font-size: 10px; /* Increased header font size */
                 font-weight: bold;
                 text-align: center;
                 letter-spacing: 0.2px;
@@ -782,8 +782,8 @@ table {
             }
             tbody tr {
                 page-break-inside: avoid;
-                height: 4mm;
-                min-height: 4mm;
+                height: 3.5mm; /* Slightly reduced row height for more rows per page */
+                min-height: 3.5mm;
             }
             tbody tr:nth-child(even) {
                 background-color: #f8f9fa !important;
@@ -791,7 +791,7 @@ table {
             .total-row { 
                 background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
                 color: white !important;
-                font-size: 8px;
+                font-size: 11px; /* Increased total row font size */
                 font-weight: bold;
                 text-shadow: 0.3px 0.3px 0.8px rgba(0,0,0,0.3);
                 page-break-inside: avoid;
