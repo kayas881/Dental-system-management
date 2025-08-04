@@ -407,6 +407,14 @@ const handleSaveEdit = async (orderId) => {
         }
     };
 
+     const normalizeDoctorName = (name) => {
+        if (!name) return '';
+        return name
+            .replace(/^(dr\.?|doctor)\s+/i, '') // Remove prefixes like "Dr."
+            .trim() // Remove leading/trailing whitespace
+            .toLowerCase(); // Convert to lowercase
+    };
+
     const handleCreateBatchBill = async () => {
         if (selectedOrders.length === 0) {
             setMessage('Please select work orders to create a grouped bill.');
@@ -415,11 +423,14 @@ const handleSaveEdit = async (orderId) => {
 
         const selectedWorkOrders = workOrders.filter(order => selectedOrders.includes(order.id));
         
-        // Check if all selected orders are from the same doctor
-        const doctors = [...new Set(selectedWorkOrders.map(order => order.doctor_name))];
+        // --- FIXED LOGIC ---
+        // Use the normalized names to find the true number of unique doctors
+        const normalizedDoctors = [...new Set(selectedWorkOrders.map(order => normalizeDoctorName(order.doctor_name)))];
         
-        if (doctors.length > 1) {
-            setMessage(`You can only generate a bill for one doctor at a time. Selected orders are from: ${doctors.join(', ')}`);
+        if (normalizedDoctors.length > 1) {
+            // Get the original names for the error message to avoid confusion
+            const originalDoctorNames = [...new Set(selectedWorkOrders.map(order => order.doctor_name.trim()))];
+            setMessage(`You can only generate a bill for one doctor at a time. Selected orders are from: ${originalDoctorNames.join(', ')}`);
             return;
         }
         
@@ -435,51 +446,43 @@ const handleSaveEdit = async (orderId) => {
             return;
         }
 
-        // Check if any selected orders already have bills
         const ordersWithBills = completedOrders.filter(order => billStatus[order.id]?.hasBill);
         if (ordersWithBills.length > 0) {
             setMessage(`${ordersWithBills.length} of the selected orders already have bills. Please select only unbilled orders.`);
             return;
         }
 
-        // Create the grouped bill directly
         setLoading(true);
         setMessage('Creating grouped bill...');
 
-        try {
-            const doctorName = doctors[0];
+         try {
+            const doctorName = selectedWorkOrders[0].doctor_name;
             
-            // Prepare bill data
+            // --- FIXED: Collect all tooth numbers from selected orders ---
+            const allTeeth = selectedWorkOrders.flatMap(order => order.tooth_numbers || []);
+            const uniqueTeeth = [...new Set(allTeeth)].sort((a, b) => a - b);
+
             const billData = {
                 doctor_name: doctorName,
                 bill_date: new Date().toISOString().split('T')[0],
                 work_order_ids: completedOrders.map(order => order.id),
                 notes: `Grouped bill for ${completedOrders.length} work orders`,
                 is_grouped: true,
+                tooth_numbers: uniqueTeeth, // <-- Pass the collected teeth
                 grouped_orders_count: completedOrders.length
             };
 
-            console.log('Creating grouped bill with data:', billData);
-
-            // Create the bill using the service
             const response = await dentalLabService.createGroupedBill(billData);
             
             if (response.data) {
                 setMessage(`✅ Grouped bill created successfully for Dr. ${doctorName} (${completedOrders.length} orders)`);
-                
-                // Clear selection and refresh data
                 setSelectedOrders([]);
-                loadWorkOrders(); // This will refresh the bill status for all orders
-                
-                // Show success message for a bit longer
+                loadWorkOrders();
                 setTimeout(() => setMessage(''), 5000);
-                
             } else {
-                console.error('Error creating grouped bill:', response.error);
                 setMessage('❌ Error creating grouped bill: ' + (response.error?.message || 'Unknown error'));
             }
         } catch (error) {
-            console.error('Error in handleCreateBatchBill:', error);
             setMessage('❌ Error creating grouped bill: ' + error.message);
         }
 
@@ -1354,60 +1357,64 @@ const handleSaveEdit = async (orderId) => {
                         handleToggleUrgent={handleToggleUrgent}
                                     />
 
-                                    {/* Selection Summary */}
-                                    {selectedOrders.length > 0 && (
-                                        <div className="mb-3">
-                                            <div className="card border-primary">
-                                                <div className="card-body py-2">
-                                                    <div className="d-flex justify-content-between align-items-center">
-                                                        <div>
-                                                            <strong className="text-primary">
-                                                                {selectedOrders.length} order{selectedOrders.length > 1 ? 's' : ''} selected
-                                                            </strong>
-                                                            {(() => {
-                                                                const selectedWorkOrders = workOrders.filter(order => selectedOrders.includes(order.id));
-                                                                const doctors = [...new Set(selectedWorkOrders.map(order => order.doctor_name))];
-                                                                
-                                                                if (doctors.length === 1) {
-                                                                    return (
-                                                                        <span className="text-success ms-2">
-                                                                            ✓ All from Dr. {doctors[0]}
-                                                                        </span>
-                                                                    );
-                                                                } else if (doctors.length > 1) {
-                                                                    return (
-                                                                        <span className="text-danger ms-2">
-                                                                            ⚠️ Multiple doctors: {doctors.join(', ')}
-                                                                        </span>
-                                                                    );
-                                                                }
-                                                                return null;
-                                                            })()}
-                                                        </div>
-                                                        <div>
-                                                            <button 
-                                                                className="btn btn-success btn-sm me-2"
-                                                                onClick={handleCreateBatchBill}
-                                                                disabled={(() => {
-                                                                    const selectedWorkOrders = workOrders.filter(order => selectedOrders.includes(order.id));
-                                                                    const doctors = [...new Set(selectedWorkOrders.map(order => order.doctor_name))];
-                                                                    return doctors.length > 1 || selectedWorkOrders.some(order => order.status !== 'completed');
-                                                                })()}
-                                                            >
-                                                                💰 Create Bill Now
-                                                            </button>
-                                                            <button 
-                                                                className="btn btn-outline-secondary btn-sm"
-                                                                onClick={clearSelection}
-                                                            >
-                                                                Clear Selection
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
+                         {/* Selection Summary */}
+            {selectedOrders.length > 0 && (
+                <div className="mb-3">
+                    <div className="card border-primary">
+                        <div className="card-body py-2">
+                            <div className="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong className="text-primary">
+                                        {selectedOrders.length} order{selectedOrders.length > 1 ? 's' : ''} selected
+                                    </strong>
+                                    {(() => {
+                                        const selectedWorkOrders = workOrders.filter(order => selectedOrders.includes(order.id));
+                                        
+                                        // --- FIXED LOGIC ---
+                                        const normalizedDoctors = [...new Set(selectedWorkOrders.map(order => normalizeDoctorName(order.doctor_name)))];
+                                        
+                                        if (normalizedDoctors.length === 1) {
+                                            const originalDoctorName = selectedWorkOrders[0].doctor_name;
+                                            return (
+                                                <span className="text-success ms-2">
+                                                    ✓ All from Dr. {originalDoctorName}
+                                                </span>
+                                            );
+                                        } else if (normalizedDoctors.length > 1) {
+                                            const originalDoctorNames = [...new Set(selectedWorkOrders.map(order => order.doctor_name.trim()))];
+                                            return (
+                                                <span className="text-danger ms-2">
+                                                    ⚠️ Multiple doctors: {originalDoctorNames.join(', ')}
+                                                </span>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
+                                </div>
+                                <div>
+                                    <button 
+                                        className="btn btn-success btn-sm me-2"
+                                        onClick={handleCreateBatchBill}
+                                        disabled={(() => {
+                                            const selectedWorkOrders = workOrders.filter(order => selectedOrders.includes(order.id));
+                                            const normalizedDoctors = [...new Set(selectedWorkOrders.map(order => normalizeDoctorName(order.doctor_name)))];
+                                            return normalizedDoctors.length > 1 || selectedWorkOrders.some(order => order.status !== 'completed');
+                                        })()}
+                                    >
+                                        💰 Create Bill Now
+                                    </button>
+                                    <button 
+                                        className="btn btn-outline-secondary btn-sm"
+                                        onClick={clearSelection}
+                                    >
+                                        Clear Selection
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
                                 </>
                             )}
 

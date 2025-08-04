@@ -292,6 +292,13 @@ const createBill = async (billData) => {
         return { error };
     }
 };
+const normalizeDoctorName = (name) => {
+    if (!name) return '';
+    return name
+        .replace(/^(dr\.?|doctor)\s+/i, '') // Remove prefixes like "Dr."
+        .trim() // Remove leading/trailing whitespace
+        .toLowerCase(); // Convert to lowercase
+};
 
 const createGroupedBill = async (groupedBillData) => {
     try {
@@ -344,9 +351,10 @@ const createGroupedBill = async (groupedBillData) => {
         }
 
         // Validate all orders are from the same doctor
-        const uniqueDoctors = [...new Set(workOrders.map(o => o.doctor_name))];
+ const uniqueDoctors = [...new Set(workOrders.map(o => normalizeDoctorName(o.doctor_name)))];
         if (uniqueDoctors.length > 1) {
-            throw new Error('All work orders must be from the same doctor');
+            const originalDoctorNames = [...new Set(workOrders.map(o => o.doctor_name.trim()))];
+            throw new Error(`All work orders must be from the same doctor. Found: ${originalDoctorNames.join(', ')}`);
         }
 
         // Create the main bill
@@ -1436,6 +1444,7 @@ getWorkOrdersWithBatchInfo,
     completeRevision,
     deleteWorkOrder,
     toggleUrgentStatus,
+    normalizeDoctorName,
 
     
     // Bills
