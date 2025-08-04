@@ -4,6 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import WorkOrdersTable from '../../components/WorkOrdersTable';
 
 const WorkOrdersList = () => {
+    // Generate unique tab identifier to prevent race conditions across tabs
+    const [tabId] = useState(() => `tab_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+    
     // ... (keep all existing useState hooks as they are)
     const [deletingOrder, setDeletingOrder] = useState(null);
     const [workOrders, setWorkOrders] = useState([]);
@@ -338,6 +341,12 @@ const handleSaveEdit = async (orderId) => {
             return;
         }
 
+        // Prevent multiple bill creation attempts
+        if (loading) {
+            setMessage('Bill creation already in progress. Please wait...');
+            return;
+        }
+
         // Create the bill directly
         setLoading(true);
         setMessage('Creating bill...');
@@ -478,7 +487,18 @@ const handleSaveEdit = async (orderId) => {
             return;
         }
 
-        const selectedWorkOrders = workOrders.filter(order => selectedOrders.includes(order.id));
+        // Prevent multiple bill creation attempts from same session
+        if (loading) {
+            setMessage('Bill creation already in progress. Please wait...');
+            return;
+        }
+
+        // RACE CONDITION PROTECTION: Store current selection as atomic operation
+        const currentSelectedOrders = [...selectedOrders];
+        const selectedWorkOrders = workOrders.filter(order => currentSelectedOrders.includes(order.id));
+        
+        // Clear selection immediately to prevent double-click issues
+        setSelectedOrders([]);
         
         // --- FIXED LOGIC ---
         // Use the normalized names to find the true number of unique doctors
@@ -488,6 +508,8 @@ const handleSaveEdit = async (orderId) => {
             // Get the original names for the error message to avoid confusion
             const originalDoctorNames = [...new Set(selectedWorkOrders.map(order => order.doctor_name.trim()))];
             setMessage(`You can only generate a bill for one doctor at a time. Selected orders are from: ${originalDoctorNames.join(', ')}`);
+            // Restore selection on error
+            setSelectedOrders(currentSelectedOrders);
             return;
         }
         
@@ -495,17 +517,29 @@ const handleSaveEdit = async (orderId) => {
 
         if (completedOrders.length === 0) {
             setMessage('Selected orders must be completed before creating a bill.');
+            // Restore selection on error
+            setSelectedOrders(currentSelectedOrders);
             return;
         }
 
-        if (completedOrders.length !== selectedOrders.length) {
-            setMessage(`Only ${completedOrders.length} of ${selectedOrders.length} selected orders are completed. Please complete all orders first.`);
+        if (completedOrders.length !== currentSelectedOrders.length) {
+            setMessage(`Only ${completedOrders.length} of ${currentSelectedOrders.length} selected orders are completed. Please complete all orders first.`);
+            // Restore selection on error
+            setSelectedOrders(currentSelectedOrders);
             return;
         }
 
+        // REAL-TIME BILL CHECK: Re-verify no bills exist right before creation
+        console.log('🔍 Real-time bill status check before creation...');
+        await checkBillStatusForOrders();
+        
         const ordersWithBills = completedOrders.filter(order => billStatus[order.id]?.hasBill);
         if (ordersWithBills.length > 0) {
-            setMessage(`${ordersWithBills.length} of the selected orders already have bills. Please select only unbilled orders.`);
+            setMessage(`❌ ${ordersWithBills.length} of the selected orders already have bills (possibly created from another device). Page will refresh.`);
+            // Don't restore selection, force refresh instead
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
             return;
         }
 

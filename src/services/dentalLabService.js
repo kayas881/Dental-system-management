@@ -274,6 +274,15 @@ const createBill = async (billData) => {
             throw new Error('User not authenticated - no user ID found');
         }
 
+        // DUPLICATE CHECK: Ensure this work order doesn't already have a bill
+        if (billData.work_order_id) {
+            console.log('Checking for existing bills for work order:', billData.work_order_id);
+            const existingBillCheck = await checkWorkOrderHasBill(billData.work_order_id);
+            if (existingBillCheck.hasBill) {
+                throw new Error(`Work order already has a bill (ID: ${existingBillCheck.data.id}). Cannot create duplicate bill.`);
+            }
+        }
+
         // Clean up empty date strings and ensure proper JSON formatting
         const cleanedData = {
             ...billData,
@@ -351,6 +360,40 @@ const createGroupedBill = async (groupedBillData) => {
 
         if (workOrders.length !== work_order_ids.length) {
             throw new Error('Some work orders not found');
+        }
+
+        // ENHANCED DUPLICATE CHECK: Ensure none of these work orders already have bills
+        // This also handles race conditions from multiple devices/tabs
+        console.log('Checking for existing bills for work orders:', work_order_ids);
+        
+        // Check individual bills first
+        const { data: existingIndividualBills, error: individualError } = await supabase
+            .from('bills')
+            .select('id, work_order_id, serial_number, is_grouped')
+            .in('work_order_id', work_order_ids)
+            .eq('is_grouped', false);
+            
+        if (individualError) throw individualError;
+        
+        if (existingIndividualBills && existingIndividualBills.length > 0) {
+            const duplicates = existingIndividualBills.map(bill => bill.serial_number).join(', ');
+            throw new Error(`Work orders already have individual bills: ${duplicates}. Cannot create duplicate grouped bill.`);
+        }
+        
+        // Check if any work orders are already in grouped bills
+        const { data: existingBillItems, error: billItemsError } = await supabase
+            .from('bill_items')
+            .select('work_order_id, bill_id, bills!inner(serial_number, is_grouped)')
+            .in('work_order_id', work_order_ids);
+            
+        if (billItemsError) throw billItemsError;
+        
+        if (existingBillItems && existingBillItems.length > 0) {
+            const duplicateWorkOrders = existingBillItems.map(item => {
+                const workOrder = workOrders.find(wo => wo.id === item.work_order_id);
+                return workOrder?.serial_number || item.work_order_id;
+            }).join(', ');
+            throw new Error(`Work orders already exist in other grouped bills: ${duplicateWorkOrders}. Cannot create duplicate grouped bill.`);
         }
 
         // Validate all orders are completed with completion dates
