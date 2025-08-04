@@ -622,17 +622,14 @@ export const handleBulkBillPrint = async (bills) => {
                 billHtml = `
                     <div class="bill-container" style="page-break-after: ${index < bills.length - 1 ? 'always' : 'auto'}; margin-bottom: 40px;">
                         ${generateCompanyHeader()}
-                        
                         <div class="doctor-section">
                             <div class="doctor-name">🩺 Dr. ${bill.doctor_name}</div>
                         </div>
-                        
                         <div class="bill-info">
                             <p><strong>📋 Bill Number:</strong> ${bill.serial_number}</p>
                             <p><strong>📅 Bill Date:</strong> ${formatDate(bill.bill_date)}</p>
                             ${bill.notes ? `<p><strong>📝 Notes:</strong> ${bill.notes}</p>` : ''}
                         </div>
-                        
                         <div class="table-with-footer">
                             <table class="bill-table">
                                 <thead>

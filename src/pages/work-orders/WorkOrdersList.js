@@ -183,6 +183,7 @@ const WorkOrdersList = () => {
             });
             
             console.log('Bill status check completed for', Object.keys(billStatusMap).length, 'orders');
+            console.log('Bill status map:', billStatusMap);
             setBillStatus(billStatusMap);
             
         } catch (error) {
@@ -359,8 +360,25 @@ const handleSaveEdit = async (orderId) => {
             if (response.data) {
                 setMessage(`✅ Bill created successfully for work order ${order.serial_number}`);
                 
+                // Immediately update bill status for this order
+                const newBillStatus = { ...billStatus };
+                newBillStatus[order.id] = {
+                    hasBill: true,
+                    billData: { id: response.data.id, status: 'pending' },
+                    billType: 'individual'
+                };
+                setBillStatus(newBillStatus);
+                
                 // Refresh data to update bill status
-                loadWorkOrders();
+                await loadWorkOrders();
+                
+                // Give a moment for the database to update, then refresh bill status
+                setTimeout(async () => {
+                    const updatedWorkOrders = await dentalLabService.getWorkOrdersWithBatchInfo();
+                    if (updatedWorkOrders.data) {
+                        checkBillStatusForOrders(updatedWorkOrders.data);
+                    }
+                }, 500);
                 
                 // Show success message for a bit longer
                 setTimeout(() => setMessage(''), 5000);
@@ -477,7 +495,29 @@ const handleSaveEdit = async (orderId) => {
             if (response.data) {
                 setMessage(`✅ Grouped bill created successfully for Dr. ${doctorName} (${completedOrders.length} orders)`);
                 setSelectedOrders([]);
-                loadWorkOrders();
+                
+                // Immediately update bill status for the affected orders
+                const newBillStatus = { ...billStatus };
+                completedOrders.forEach(order => {
+                    newBillStatus[order.id] = {
+                        hasBill: true,
+                        billData: { id: response.data.bill.id, status: 'pending' },
+                        billType: 'grouped'
+                    };
+                });
+                setBillStatus(newBillStatus);
+                
+                // Reload work orders and refresh bill status
+                await loadWorkOrders();
+                
+                // Give a moment for the database to update, then refresh bill status
+                setTimeout(async () => {
+                    const updatedWorkOrders = await dentalLabService.getWorkOrdersWithBatchInfo();
+                    if (updatedWorkOrders.data) {
+                        checkBillStatusForOrders(updatedWorkOrders.data);
+                    }
+                }, 500);
+                
                 setTimeout(() => setMessage(''), 5000);
             } else {
                 setMessage('❌ Error creating grouped bill: ' + (response.error?.message || 'Unknown error'));

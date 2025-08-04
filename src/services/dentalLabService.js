@@ -200,47 +200,66 @@ const getWorkOrder = async (workOrderId) => {
 // Check if work order has existing bill
 const checkWorkOrderHasBill = async (workOrderId) => {
     try {
-        // First, check for an individual bill (where work_order_id is directly in the bills table)
-        const { data: regularBill, error: regularError } = await supabase
+        console.log(`Checking bill status for work order: ${workOrderId}`);
+        
+        // 🔁 Just get all bills for this work order (not limited to 1)
+        const { data: regularBills, error: regularError } = await supabase
             .from('bills')
             .select('id, status, bill_date')
-            .eq('work_order_id', workOrderId)
-            .limit(1)
-            .single();
+            .eq('work_order_id', workOrderId);
 
-        if (regularBill) {
-            return { hasBill: true, data: regularBill, billType: 'individual' };
+        if (regularError) {
+            console.error('Error checking regular bill for work order:', workOrderId, regularError);
+            throw regularError;
         }
-        
-        // If no individual bill, check if this work order is part of a grouped bill
-        // by looking for it in the 'bill_items' table.
-        const { data: billItem, error: itemError } = await supabase
+
+        console.log(`Regular bills found for work order ${workOrderId}:`, regularBills);
+
+        if (regularBills && regularBills.length > 0) {
+            console.log(`Work order ${workOrderId} has individual bill:`, regularBills[0]);
+            return { 
+                hasBill: true, 
+                data: regularBills[0], // take the first for display
+                billType: 'individual' 
+            };
+        }
+
+        // Check for grouped bills (work order appears in bill_items)
+        const { data: billItems, error: itemsError } = await supabase
             .from('bill_items')
-            .select('bills(id, status, bill_date, is_grouped)') // Fetch the parent bill's data
-            .eq('work_order_id', workOrderId)
-            .limit(1)
-            .single();
+            .select(`
+                id, 
+                bill_id,
+                bills!inner(id, status, bill_date, is_grouped)
+            `)
+            .eq('work_order_id', workOrderId);
 
-        // If we found an item, the work order is part of a grouped bill
-        if (billItem && billItem.bills) {
-            return { hasBill: true, data: billItem.bills, billType: 'grouped' };
+        if (itemsError) {
+            console.error('Error checking bill items for work order:', workOrderId, itemsError);
+            throw itemsError;
         }
 
-        // If neither check found a bill, then it's unbilled.
-        // We can ignore certain errors like 'PGRST116' which just means "no rows found".
-        if (itemError && itemError.code !== 'PGRST116') {
-            console.error('Error checking bill items:', itemError);
-            throw itemError;
+        console.log(`Bill items found for work order ${workOrderId}:`, billItems);
+
+        if (billItems && billItems.length > 0) {
+            console.log(`Work order ${workOrderId} has grouped bill:`, billItems[0].bills);
+            return { 
+                hasBill: true, 
+                data: billItems[0].bills, 
+                billType: 'grouped' 
+            };
         }
 
-        return { hasBill: false, data: null };
-
+        console.log(`No bills found for work order ${workOrderId}`);
+        return { 
+            hasBill: false, 
+            data: null 
+        };
     } catch (error) {
-        console.error(`Error in checkWorkOrderHasBill for order ${workOrderId}:`, error);
-        return { error: error.message };
+        console.error('Check work order bill error:', error);
+        return { error };
     }
 };
-
 
 
 // Bills Management
