@@ -130,10 +130,10 @@ const WorkOrdersList = () => {
         try {
             const billStatusMap = {};
             
-            // Only check completed orders, and limit to recent ones to avoid performance issues
+            // Check all completed orders (increased limit to ensure recent ones are included)
             const completedOrders = orders
                 .filter(order => order.status === 'completed')
-                .slice(0, 50); // Limit to 50 most recent to avoid timeout
+                .slice(0, 100); // Increased from 50 to 100 to catch more recent orders
             
             console.log('Checking bill status for', completedOrders.length, 'completed orders');
             
@@ -189,6 +189,39 @@ const WorkOrdersList = () => {
         } catch (error) {
             console.error('Error in checkBillStatusForOrders:', error);
             // Don't set an error message here since this is background loading
+        }
+    };
+
+    // Function to force check specific work orders by ID
+    const forceCheckBillStatusForSpecificOrders = async (orderIds) => {
+        try {
+            console.log('Force checking bill status for specific orders:', orderIds);
+            const newBillStatus = { ...billStatus };
+            
+            for (const orderId of orderIds) {
+                try {
+                    const response = await dentalLabService.checkWorkOrderHasBill(orderId);
+                    if (response.hasBill) {
+                        newBillStatus[orderId] = {
+                            hasBill: true,
+                            billData: response.data,
+                            billType: response.billType
+                        };
+                    } else {
+                        newBillStatus[orderId] = {
+                            hasBill: false,
+                            billData: null
+                        };
+                    }
+                } catch (error) {
+                    console.error('Error checking bill status for order:', orderId, error);
+                }
+            }
+            
+            setBillStatus(newBillStatus);
+            console.log('Force check completed, updated bill status:', newBillStatus);
+        } catch (error) {
+            console.error('Error in forceCheckBillStatusForSpecificOrders:', error);
         }
     };
 
@@ -374,6 +407,12 @@ const handleSaveEdit = async (orderId) => {
                 
                 // Give a moment for the database to update, then refresh bill status
                 setTimeout(async () => {
+                    console.log('Forcing bill status check for newly billed order:', order.id);
+                    
+                    // Force check the specific order we just billed
+                    await forceCheckBillStatusForSpecificOrders([order.id]);
+                    
+                    // Then do a full refresh
                     const updatedWorkOrders = await dentalLabService.getWorkOrdersWithBatchInfo();
                     if (updatedWorkOrders.data) {
                         checkBillStatusForOrders(updatedWorkOrders.data);
@@ -496,6 +535,16 @@ const handleSaveEdit = async (orderId) => {
                 setMessage(`✅ Grouped bill created successfully for Dr. ${doctorName} (${completedOrders.length} orders)`);
                 setSelectedOrders([]);
                 
+                console.log('=== GROUPED BILL CREATION SUCCESS ===');
+                console.log('Completed orders that were billed:', completedOrders.map(o => ({
+                    id: o.id,
+                    serial: o.serial_number,
+                    doctor: o.doctor_name,
+                    patient: o.patient_name
+                })));
+                console.log('Bill ID:', response.data.bill.id);
+                console.log('=====================================');
+                
                 // Immediately update bill status for the affected orders
                 const newBillStatus = { ...billStatus };
                 completedOrders.forEach(order => {
@@ -512,6 +561,12 @@ const handleSaveEdit = async (orderId) => {
                 
                 // Give a moment for the database to update, then refresh bill status
                 setTimeout(async () => {
+                    console.log('Forcing bill status check for newly billed orders:', completedOrders.map(o => o.id));
+                    
+                    // Force check the specific orders we just billed
+                    await forceCheckBillStatusForSpecificOrders(completedOrders.map(o => o.id));
+                    
+                    // Then do a full refresh
                     const updatedWorkOrders = await dentalLabService.getWorkOrdersWithBatchInfo();
                     if (updatedWorkOrders.data) {
                         checkBillStatusForOrders(updatedWorkOrders.data);
