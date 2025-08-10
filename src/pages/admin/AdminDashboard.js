@@ -471,6 +471,20 @@ const AdminDashboard = () => {
                                             >
                                                 👥 Manage Users
                                             </button>
+                                            <button 
+                                                className="btn btn-warning" 
+                                                onClick={() => navigate('/user-management?tab=password')}
+                                                title="Quickly change user passwords for security"
+                                            >
+                                                🔐 Change Passwords
+                                            </button>
+                                            <button 
+                                                className="btn btn-dark" 
+                                                onClick={() => navigate('/user-management?tab=super-admin')}
+                                                title="Super Admin controls - promote/demote users"
+                                            >
+                                                👑 Super Admin
+                                            </button>
                                             <div className="small text-muted">
                                                 {stats.totalStaff} staff • {stats.totalAdmins} admins
                                             </div>

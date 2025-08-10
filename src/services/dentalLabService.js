@@ -545,8 +545,7 @@ const updateBillAmount = async (id, amount) => {
         }
 
         // Check if user is admin (only admins should update bill amounts)
-        const userRole = authService.getUserRole();
-        if (userRole !== 'ADMIN' && userRole !== 'admin') {
+        if (!authService.isAdminOrSuperAdmin()) {
             throw new Error('Access denied. Only administrators can update bill amounts.');
         }
 
@@ -611,8 +610,7 @@ const updateBillStatus = async (id, status) => {
         }
 
         // Check if user is admin (only admins should update bill status)
-        const userRole = authService.getUserRole();
-        if (userRole !== 'ADMIN' && userRole !== 'admin') {
+        if (!authService.isAdminOrSuperAdmin()) {
             throw new Error('Access denied. Only administrators can update bill status.');
         }
 
@@ -1048,8 +1046,7 @@ const updateWorkOrderAmount = async (id, amount) => {
         }
 
         // Check if user is admin
-        const userRole = authService.getUserRole();
-        if (userRole !== 'ADMIN' && userRole !== 'admin') {
+        if (!authService.isAdminOrSuperAdmin()) {
             throw new Error('Access denied. Only administrators can update work order amounts.');
         }
 

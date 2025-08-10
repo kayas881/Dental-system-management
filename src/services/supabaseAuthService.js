@@ -16,6 +16,11 @@ const getUserRole = () => {
     return localStorage.getItem('user_role');
 };
 
+// Get Super Admin status
+const getIsSuperAdmin = () => {
+    return localStorage.getItem('is_super_admin') === 'true';
+};
+
 const getUserId = async () => {
     try {
         const { data: { user } } = await supabase.auth.getUser();
@@ -40,62 +45,48 @@ const login = async (userData) => {
         // Clear any existing localStorage first
         localStorage.clear();
 
-        // Get user profile with role using email as backup
+        // Get user profile with role - Use admin client to bypass RLS during login
         let profile = null;
         
         console.log('Looking for profile for user:', data.user.email, 'with ID:', data.user.id);
         
-        // First try to get by user_id
-        const { data: profileByUserId, error: profileError1 } = await supabase
+        // FIRST try to get by email using admin client (bypasses RLS)
+        const { data: profileByEmail, error: profileError1 } = await supabaseAdmin
             .from('user_profiles')
-            .select('role')
-            .eq('user_id', data.user.id)
+            .select('role, user_id, is_super_admin')
+            .eq('email', data.user.email)
             .single();
 
-        console.log('Profile by user_id:', profileByUserId, 'Error:', profileError1);
+        console.log('Profile by email:', profileByEmail, 'Error:', profileError1);
 
-        if (profileByUserId) {
-            profile = profileByUserId;
-        } else {
-            // If not found by user_id, try by email
-            const { data: profileByEmail, error: profileError2 } = await supabase
-                .from('user_profiles')
-                .select('role, user_id')
-                .eq('email', data.user.email)
-                .single();
-                 console.log('Profile by email:', profileByEmail, 'Error:', profileError2);
-        
         if (profileByEmail) {
             profile = profileByEmail;
             // Update the user_id in the profile if it's different
             if (profileByEmail.user_id !== data.user.id) {
                 console.log('Updating user_id in profile from', profileByEmail.user_id, 'to', data.user.id);
-                await supabase
+                await supabaseAdmin
                     .from('user_profiles')
                     .update({ user_id: data.user.id })
                     .eq('email', data.user.email);
             }
         } else {
-            console.error('No profile found for user:', data.user.email);
-            // Try to create a basic profile if none exists
-            console.log('Attempting to create profile for:', data.user.email);
-            const { data: newProfile, error: createError } = await supabase
+            // Only try by user_id if email lookup failed
+            const { data: profileByUserId, error: profileError2 } = await supabaseAdmin
                 .from('user_profiles')
-                .insert([{
-                    user_id: data.user.id,
-                    email: data.user.email,
-                    role: 'USER' // Default role, change manually in DB for admin
-                }])
-                .select()
+                .select('role, is_super_admin')
+                .eq('user_id', data.user.id)
                 .single();
-            
-            if (!createError && newProfile) {
-                console.log('Created new profile:', newProfile);
-                profile = newProfile;
+
+            console.log('Profile by user_id:', profileByUserId, 'Error:', profileError2);
+
+            if (profileByUserId) {
+                profile = profileByUserId;
             } else {
-                console.error('Failed to create profile:', createError);
+                console.error('No profile found for user:', data.user.email);
+                console.log('⚠️  IMPORTANT: Will NOT create new profile - user should exist in database');
+                // DO NOT create new profiles automatically - admin should be set up manually
+                throw new Error('User profile not found. Please contact administrator to set up your account.');
             }
-        }
         }
 
         console.log('User profile found:', profile);
@@ -107,14 +98,24 @@ const login = async (userData) => {
         if (data.session) {
             setToken(data.session.access_token);
             localStorage.setItem('user_email', data.user.email);
-            localStorage.setItem('user_role', profile?.role || 'USER');
-            localStorage.setItem('user_id', data.user.id);
             
-            console.log('Stored role in localStorage:', profile?.role || 'USER');
+            // Determine the actual role including Super Admin
+            let userRole = profile?.role || 'USER';
+            if (profile?.is_super_admin === true) {
+                userRole = 'SUPER_ADMIN';
+            }
+            
+            localStorage.setItem('user_role', userRole);
+            localStorage.setItem('user_id', data.user.id);
+            localStorage.setItem('is_super_admin', profile?.is_super_admin === true ? 'true' : 'false');
+            
+            console.log('Stored role in localStorage:', userRole);
+            console.log('Super Admin status:', profile?.is_super_admin === true);
             console.log('localStorage after setting:', {
                 email: localStorage.getItem('user_email'),
                 role: localStorage.getItem('user_role'),
-                id: localStorage.getItem('user_id')
+                id: localStorage.getItem('user_id'),
+                is_super_admin: localStorage.getItem('is_super_admin')
             });
         }
 
@@ -165,8 +166,8 @@ const createUser = async (userData) => {
         // Get the current user ID for created_by field
         const currentUserId = await getUserId();
 
-        // Create user profile using regular client
-        const { data: profileData, error: profileError } = await supabase
+        // Create user profile using admin client to bypass RLS
+        const { data: profileData, error: profileError } = await supabaseAdmin
             .from('user_profiles')
             .insert([
                 {
@@ -191,13 +192,15 @@ const createUser = async (userData) => {
 
 const getAllUsers = async () => {
     try {
-        const { data, error } = await supabase
+        // Use admin client to bypass RLS policies for user management
+        const { data, error } = await supabaseAdmin
             .from('user_profiles')
             .select(`
                 id,
                 user_id,
                 email,
                 role,
+                is_super_admin,
                 created_at,
                 created_by
             `)
@@ -218,16 +221,22 @@ const deleteUser = async (userId) => {
     try {
         // Get current user ID to prevent self-deletion
         const currentUserId = await getUserId();
+        const currentAdminLevel = await getAdminLevel();
         
         // Prevent self-deletion
         if (userId === currentUserId) {
             throw new Error('You cannot delete your own account');
         }
 
-        // First check if the user is an admin
-        const { data: userProfile, error: profileCheckError } = await supabase
+        // Check if current user has admin privileges
+        if (currentAdminLevel === 'USER') {
+            throw new Error('Access denied. Only administrators can delete users.');
+        }
+
+        // Get target user profile using admin client to bypass RLS
+        const { data: userProfile, error: profileCheckError } = await supabaseAdmin
             .from('user_profiles')
-            .select('role')
+            .select('role, is_super_admin, email')
             .eq('user_id', userId)
             .single();
 
@@ -235,10 +244,20 @@ const deleteUser = async (userId) => {
             throw new Error('User not found');
         }
 
-        // Prevent deletion of admin users
+        // Super Admin protection
+        const targetIsSuper = userProfile.is_super_admin === true || userProfile.role === 'SUPER_ADMIN';
+        if (targetIsSuper) {
+            throw new Error('Super Admin accounts cannot be deleted for security reasons.');
+        }
+
+        // Regular admin deletion protection - only Super Admin can delete admins
+        if (userProfile.role === 'ADMIN' && currentAdminLevel !== 'SUPER_ADMIN') {
+            throw new Error('Only Super Admin can delete other admin accounts.');
+        }
+
+        // Additional check: ensure we're not deleting the last admin (excluding super admin)
         if (userProfile.role === 'ADMIN') {
-            // Additional check: ensure we're not deleting the last admin
-            const { data: adminUsers } = await supabase
+            const { data: adminUsers } = await supabaseAdmin
                 .from('user_profiles')
                 .select('id')
                 .eq('role', 'ADMIN');
@@ -246,8 +265,6 @@ const deleteUser = async (userId) => {
             if (adminUsers && adminUsers.length <= 1) {
                 throw new Error('Cannot delete the last admin user in the system');
             }
-            
-            throw new Error('Admin users cannot be deleted');
         }
 
         // First delete from auth.users using admin client
@@ -257,17 +274,17 @@ const deleteUser = async (userId) => {
             throw authError;
         }
 
-        // Then delete from user_profiles (this should cascade automatically but we'll do it explicitly)
-        const { error: profileError } = await supabase
+        // Then delete from user_profiles using admin client
+        const { error: profileError } = await supabaseAdmin
             .from('user_profiles')
             .delete()
             .eq('user_id', userId);
 
         if (profileError) {
             console.warn('Profile deletion failed, but auth user was deleted:', profileError);
-            // Don't throw here since the main deletion (auth) succeeded
         }
 
+        console.log(`User ${userProfile.email} deleted by ${currentAdminLevel}`);
         return { success: true };
     } catch (error) {
         console.error('Delete user error:', error);
@@ -295,10 +312,10 @@ const refreshUserRole = async () => {
             return null;
         }
 
-        // Get fresh role from database
-        const { data: profile, error } = await supabase
+        // Get fresh role from database using admin client to bypass RLS
+        const { data: profile, error } = await supabaseAdmin
             .from('user_profiles')
-            .select('role')
+            .select('role, is_super_admin')
             .eq('email', userEmail)
             .single();
 
@@ -307,11 +324,19 @@ const refreshUserRole = async () => {
             return null;
         }
 
-        // Update localStorage with fresh role
+        // Update localStorage with fresh role and super admin status
         if (profile) {
-            localStorage.setItem('user_role', profile.role);
-            console.log('Refreshed role to:', profile.role);
-            return profile.role;
+            let userRole = profile.role || 'USER';
+            if (profile.is_super_admin === true) {
+                userRole = 'SUPER_ADMIN';
+            }
+            
+            localStorage.setItem('user_role', userRole);
+            localStorage.setItem('is_super_admin', profile.is_super_admin === true ? 'true' : 'false');
+            
+            console.log('Refreshed role to:', userRole);
+            console.log('Super Admin status:', profile.is_super_admin === true);
+            return userRole;
         }
 
         return null;
@@ -399,8 +424,8 @@ const restoreAdminRole = async (email) => {
     try {
         console.log('Attempting to restore admin role for:', email);
         
-        // Update the user's role back to ADMIN
-        const { data, error } = await supabase
+        // Update the user's role back to ADMIN using admin client
+        const { data, error } = await supabaseAdmin
             .from('user_profiles')
             .update({ role: 'ADMIN' })
             .eq('email', email)
@@ -420,8 +445,8 @@ const restoreAdminRole = async (email) => {
 
 const ensureAdminProtection = async () => {
     try {
-        // Check if there are any admin users in the system
-        const { data: adminUsers, error } = await supabase
+        // Check if there are any admin users in the system using admin client
+        const { data: adminUsers, error } = await supabaseAdmin
             .from('user_profiles')
             .select('email, role')
             .eq('role', 'ADMIN');
@@ -446,6 +471,294 @@ const ensureAdminProtection = async () => {
     }
 };
 
+// Check if user is Super Admin
+const isSuperAdmin = async (userId = null) => {
+    try {
+        // First check localStorage for immediate response
+        const localStorageCheck = getIsSuperAdmin();
+        if (localStorageCheck) {
+            return true;
+        }
+
+        // Fallback to database check using admin client to bypass RLS
+        const checkUserId = userId || await getUserId();
+        if (!checkUserId) return false;
+
+        const { data: profile, error } = await supabaseAdmin
+            .from('user_profiles')
+            .select('role, is_super_admin')
+            .eq('user_id', checkUserId)
+            .single();
+
+        if (error) return false;
+        return profile?.is_super_admin === true || profile?.role === 'SUPER_ADMIN';
+    } catch (error) {
+        console.error('Error checking super admin status:', error);
+        return false;
+    }
+};
+
+// Get user's admin level
+const getAdminLevel = async (userId = null) => {
+    try {
+        // First check localStorage for immediate response
+        const localRole = getUserRole();
+        if (localRole === 'SUPER_ADMIN') return 'SUPER_ADMIN';
+        if (localRole === 'ADMIN') return 'ADMIN';
+        if (localRole === 'USER') return 'USER';
+
+        // Fallback to database check using admin client to bypass RLS
+        const checkUserId = userId || await getUserId();
+        if (!checkUserId) return 'USER';
+
+        const { data: profile, error } = await supabaseAdmin
+            .from('user_profiles')
+            .select('role, is_super_admin')
+            .eq('user_id', checkUserId)
+            .single();
+
+        if (error) return 'USER';
+        
+        if (profile?.is_super_admin === true || profile?.role === 'SUPER_ADMIN') {
+            return 'SUPER_ADMIN';
+        } else if (profile?.role === 'ADMIN') {
+            return 'ADMIN';
+        } else {
+            return 'USER';
+        }
+    } catch (error) {
+        console.error('Error getting admin level:', error);
+        return 'USER';
+    }
+};
+
+// Change user password - admin only function with Super Admin protection
+const changeUserPassword = async (userId, newPassword, isOwnPassword = false) => {
+    try {
+        // Get current user info
+        const currentUserId = await getUserId();
+        const currentUserRole = getUserRole();
+        const currentAdminLevel = await getAdminLevel();
+        
+        if (!currentUserId) {
+            throw new Error('User not authenticated');
+        }
+
+        // Check if user has admin privileges
+        if (currentAdminLevel === 'USER') {
+            throw new Error('Access denied. Only administrators can change passwords.');
+        }
+
+        // Get target user info using admin client to bypass RLS
+        const { data: targetProfile, error: profileError } = await supabaseAdmin
+            .from('user_profiles')
+            .select('email, role, is_super_admin')
+            .eq('user_id', userId)
+            .single();
+
+        if (profileError) {
+            throw new Error('User not found');
+        }
+
+        // Super Admin protection - only Super Admin can change Super Admin passwords (self or otherwise)
+        const targetIsSuper = targetProfile.is_super_admin === true || targetProfile.role === 'SUPER_ADMIN';
+        if (targetIsSuper && currentAdminLevel !== 'SUPER_ADMIN') {
+            throw new Error('Access denied. Only Super Admin can change a Super Admin password.');
+        }
+
+        // Validate password
+        if (!newPassword || newPassword.length < 6) {
+            throw new Error('Password must be at least 6 characters long');
+        }
+
+        // Additional security check for changing own password
+        if (isOwnPassword && userId !== currentUserId) {
+            throw new Error('Security violation: User ID mismatch');
+        }
+
+        if (profileError) {
+            throw new Error('User not found');
+        }
+
+        // Use admin client to update password
+        const { data, error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+            password: newPassword
+        });
+
+        if (error) {
+            throw error;
+        }
+
+        console.log('Password changed successfully for user:', targetProfile.email);
+        return { 
+            success: true, 
+            message: `Password changed successfully for ${targetProfile.email}`,
+            userEmail: targetProfile.email
+        };
+    } catch (error) {
+        console.error('Change password error:', error);
+        return { error: error.message || 'Failed to change password' };
+    }
+};
+
+// Change own password with additional security and Super Admin protection
+const changeOwnPassword = async (currentPassword, newPassword) => {
+    try {
+        const currentUserId = await getUserId();
+        const currentUserEmail = getUserEmail();
+        const adminLevel = await getAdminLevel();
+        
+        if (!currentUserId || !currentUserEmail) {
+            throw new Error('User not authenticated');
+        }
+
+    // Allow Super Admin to change own password now (previously restricted). Extra verification already occurs via re-auth.
+
+        // Validate new password
+        if (!newPassword || newPassword.length < 6) {
+            throw new Error('New password must be at least 6 characters long');
+        }
+
+        // Verify current password by attempting to sign in
+        const { error: verifyError } = await supabase.auth.signInWithPassword({
+            email: currentUserEmail,
+            password: currentPassword,
+        });
+
+        if (verifyError) {
+            throw new Error('Current password is incorrect');
+        }
+
+        // Update password using admin client
+        const { data, error } = await supabaseAdmin.auth.admin.updateUserById(currentUserId, {
+            password: newPassword
+        });
+
+        if (error) {
+            throw error;
+        }
+
+        console.log('Own password changed successfully');
+        return { 
+            success: true, 
+            message: 'Your password has been changed successfully'
+        };
+    } catch (error) {
+        console.error('Change own password error:', error);
+        return { error: error.message || 'Failed to change password' };
+    }
+};
+
+// Promote user to admin - Super Admin only
+const promoteToAdmin = async (userId) => {
+    try {
+        const currentAdminLevel = await getAdminLevel();
+        
+        if (currentAdminLevel !== 'SUPER_ADMIN') {
+            throw new Error('Access denied. Only Super Admin can promote users to admin.');
+        }
+
+        const { data: userProfile, error: profileError } = await supabaseAdmin
+            .from('user_profiles')
+            .select('email, role')
+            .eq('user_id', userId)
+            .single();
+
+        if (profileError) {
+            throw new Error('User not found');
+        }
+
+        if (userProfile.role === 'ADMIN') {
+            throw new Error('User is already an admin');
+        }
+
+        const { data, error } = await supabaseAdmin
+            .from('user_profiles')
+            .update({ role: 'ADMIN' })
+            .eq('user_id', userId)
+            .select();
+
+        if (error) {
+            throw error;
+        }
+
+        console.log(`User ${userProfile.email} promoted to admin`);
+        return { 
+            success: true, 
+            message: `${userProfile.email} has been promoted to admin`,
+            userEmail: userProfile.email
+        };
+    } catch (error) {
+        console.error('Promote to admin error:', error);
+        return { error: error.message || 'Failed to promote user' };
+    }
+};
+
+// Demote admin to user - Super Admin only
+const demoteFromAdmin = async (userId) => {
+    try {
+        const currentUserId = await getUserId();
+        const currentAdminLevel = await getAdminLevel();
+        
+        if (currentAdminLevel !== 'SUPER_ADMIN') {
+            throw new Error('Access denied. Only Super Admin can demote admin users.');
+        }
+
+        if (userId === currentUserId) {
+            throw new Error('Super Admin cannot demote themselves');
+        }
+
+        const { data: userProfile, error: profileError } = await supabaseAdmin
+            .from('user_profiles')
+            .select('email, role, is_super_admin')
+            .eq('user_id', userId)
+            .single();
+
+        if (profileError) {
+            throw new Error('User not found');
+        }
+
+        // Cannot demote Super Admin
+        if (userProfile.is_super_admin === true || userProfile.role === 'SUPER_ADMIN') {
+            throw new Error('Cannot demote Super Admin');
+        }
+
+        if (userProfile.role !== 'ADMIN') {
+            throw new Error('User is not an admin');
+        }
+
+        // Check if this is the last admin using admin client
+        const { data: adminUsers } = await supabaseAdmin
+            .from('user_profiles')
+            .select('id')
+            .eq('role', 'ADMIN');
+        
+        if (adminUsers && adminUsers.length <= 1) {
+            throw new Error('Cannot demote the last admin user in the system');
+        }
+
+        const { data, error } = await supabaseAdmin
+            .from('user_profiles')
+            .update({ role: 'USER' })
+            .eq('user_id', userId)
+            .select();
+
+        if (error) {
+            throw error;
+        }
+
+        console.log(`Admin ${userProfile.email} demoted to user`);
+        return { 
+            success: true, 
+            message: `${userProfile.email} has been demoted from admin to user`,
+            userEmail: userProfile.email
+        };
+    } catch (error) {
+        console.error('Demote from admin error:', error);
+        return { error: error.message || 'Failed to demote user' };
+    }
+};
+
 export const authService = {
     logOut,
     getToken,
@@ -454,6 +767,7 @@ export const authService = {
     signUp,
     getUserEmail,
     getUserRole,
+    getIsSuperAdmin,
     getUserId,
     fixUserSession,
     isLoggedIn,
@@ -463,5 +777,16 @@ export const authService = {
     refreshUserRole,
     debugUserProfile,
     restoreAdminRole,
-    ensureAdminProtection
+    ensureAdminProtection,
+    changeUserPassword,
+    changeOwnPassword,
+    isSuperAdmin,
+    getAdminLevel,
+    promoteToAdmin,
+    demoteFromAdmin,
+    // Helper: treat SUPER_ADMIN as having admin capabilities
+    isAdminOrSuperAdmin: () => {
+        const role = getUserRole();
+        return role === 'ADMIN' || role === 'SUPER_ADMIN' || role === 'admin';
+    }
 };

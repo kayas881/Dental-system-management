@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { authService } from '../../services/supabaseAuthService';
+import QuickPasswordChange from '../auth/QuickPasswordChange';
 import './ProfessionalLayout.css';
 
 const ProfessionalLayout = ({ children }) => {
     const [userEmail, setUserEmail] = useState('');
     const [userRole, setUserRole] = useState('');
     const [showUserDropdown, setShowUserDropdown] = useState(false);
+    const [showPasswordChange, setShowPasswordChange] = useState(false);
     const [showSidebar, setShowSidebar] = useState(false);
     const dropdownRef = useRef(null);
     const navigate = useNavigate();
@@ -162,6 +164,16 @@ const ProfessionalLayout = ({ children }) => {
                                         Profile Settings
                                     </button>
                                     <button 
+                                        className="dropdown-item text-warning"
+                                        onClick={() => {
+                                            setShowUserDropdown(false);
+                                            setShowPasswordChange(true);
+                                        }}
+                                    >
+                                        <i className="fas fa-key me-2"></i>
+                                        Change Password
+                                    </button>
+                                    <button 
                                         className="dropdown-item text-danger"
                                         onClick={handleLogout}
                                     >
@@ -260,6 +272,14 @@ const ProfessionalLayout = ({ children }) => {
                     </div>
                 </div>
             </footer>
+            
+            {/* Quick Password Change Modal */}
+            {showPasswordChange && (
+                <QuickPasswordChange 
+                    onClose={() => setShowPasswordChange(false)}
+                    userEmail={userEmail}
+                />
+            )}
         </div>
     );
 };

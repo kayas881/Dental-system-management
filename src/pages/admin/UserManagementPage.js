@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { authService } from '../../services/supabaseAuthService';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import PasswordManagement from '../../components/admin/PasswordManagement';
+import SuperAdminControls from '../../components/admin/SuperAdminControls';
 
 const UserManagementPage = () => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [showCreateForm, setShowCreateForm] = useState(false);
+    const [showPasswordManagement, setShowPasswordManagement] = useState(false);
+    const [showSuperAdminControls, setShowSuperAdminControls] = useState(false);
     const [currentUserId, setCurrentUserId] = useState(null);
+    const [isSuperAdmin, setIsSuperAdmin] = useState(false);
     const [newUser, setNewUser] = useState({
         email: '',
         password: '',
@@ -14,11 +19,27 @@ const UserManagementPage = () => {
     });
     const [message, setMessage] = useState('');
     const navigate = useNavigate();
+    const location = useLocation();
 
     useEffect(() => {
         loadUsers();
         getCurrentUserId();
-    }, []);
+        checkSuperAdminStatus();
+        
+        // Check URL parameters to auto-open tabs
+        const urlParams = new URLSearchParams(location.search);
+        const tab = urlParams.get('tab');
+        if (tab === 'password') {
+            setShowPasswordManagement(true);
+        } else if (tab === 'super-admin') {
+            setShowSuperAdminControls(true);
+        }
+    }, [location]);
+
+    const checkSuperAdminStatus = async () => {
+        const superAdminStatus = await authService.isSuperAdmin();
+        setIsSuperAdmin(superAdminStatus);
+    };
 
     const getCurrentUserId = async () => {
         const userId = await authService.getUserId();
@@ -99,12 +120,6 @@ const UserManagementPage = () => {
                     <div className="d-flex justify-content-between align-items-center mb-4">
                         <h2>User Management Panel</h2>
                         <div>
-                            <button 
-                                className="btn btn-primary me-2" 
-                                onClick={() => setShowCreateForm(!showCreateForm)}
-                            >
-                                {showCreateForm ? 'Cancel' : 'Create New User'}
-                            </button>
                             <button className="btn btn-secondary me-2" onClick={() => navigate('/admin-dashboard')}>
                                 Back to Dashboard
                             </button>
@@ -114,11 +129,92 @@ const UserManagementPage = () => {
                         </div>
                     </div>
 
+                    {/* Navigation Tabs */}
+                    <ul className="nav nav-tabs mb-4">
+                        <li className="nav-item">
+                            <button 
+                                className={`nav-link ${!showPasswordManagement && !showSuperAdminControls ? 'active' : ''}`}
+                                onClick={() => {
+                                    setShowPasswordManagement(false);
+                                    setShowSuperAdminControls(false);
+                                }}
+                            >
+                                👥 User Management
+                            </button>
+                        </li>
+                        <li className="nav-item">
+                            <button 
+                                className={`nav-link ${showPasswordManagement ? 'active' : ''}`}
+                                onClick={() => {
+                                    setShowPasswordManagement(true);
+                                    setShowSuperAdminControls(false);
+                                }}
+                            >
+                                🔐 Password Management
+                            </button>
+                        </li>
+                        {isSuperAdmin && (
+                            <li className="nav-item">
+                                <button 
+                                    className={`nav-link ${showSuperAdminControls ? 'active' : ''}`}
+                                    onClick={() => {
+                                        setShowPasswordManagement(false);
+                                        setShowSuperAdminControls(true);
+                                    }}
+                                >
+                                    👑 Super Admin
+                                </button>
+                            </li>
+                        )}
+                    </ul>
+
                     {message && (
                         <div className={`alert ${message.includes('Error') ? 'alert-danger' : 'alert-success'}`}>
                             {message}
                         </div>
                     )}
+
+                    {/* Super Admin Controls Tab */}
+                    {showSuperAdminControls && (
+                        <SuperAdminControls 
+                            users={users} 
+                            onUserAction={() => {
+                                loadUsers();
+                                setMessage('User action completed successfully');
+                            }}
+                        />
+                    )}
+
+                    {/* Password Management Tab */}
+                    {showPasswordManagement && !showSuperAdminControls && (
+                        <PasswordManagement 
+                            users={users} 
+                            onPasswordChanged={() => {
+                                loadUsers();
+                                setMessage('Password operation completed successfully');
+                            }}
+                        />
+                    )}
+
+                    {/* User Management Tab */}
+                    {!showPasswordManagement && !showSuperAdminControls && (
+                        <>
+                            <div className="row mb-3">
+                                <div className="col-12">
+                                    <button 
+                                        className="btn btn-primary" 
+                                        onClick={() => {
+                                            if (!showCreateForm) {
+                                                // Reset fields every time the form is opened to avoid any residual data/autofill
+                                                setNewUser({ email: '', password: '', role: 'USER' });
+                                            }
+                                            setShowCreateForm(!showCreateForm);
+                                        }}
+                                    >
+                                        {showCreateForm ? 'Cancel' : 'Create New User'}
+                                    </button>
+                                </div>
+                            </div>
 
                     {showCreateForm && (
                         <div className="card mb-4">
@@ -126,7 +222,7 @@ const UserManagementPage = () => {
                                 <h4>Create New Login Credentials</h4>
                             </div>
                             <div className="card-body">
-                                <form onSubmit={handleCreateUser}>
+                                <form onSubmit={handleCreateUser} autoComplete="off">
                                     <div className="row">
                                         <div className="col-md-6">
                                             <div className="mb-3">
@@ -134,9 +230,11 @@ const UserManagementPage = () => {
                                                 <input
                                                     type="email"
                                                     className="form-control"
+                                                    name="new_user_email"
                                                     value={newUser.email}
                                                     onChange={(e) => setNewUser({...newUser, email: e.target.value})}
                                                     placeholder="Enter email address"
+                                                    autoComplete="off"
                                                     required
                                                 />
                                             </div>
@@ -147,9 +245,11 @@ const UserManagementPage = () => {
                                                 <input
                                                     type="password"
                                                     className="form-control"
+                                                    name="new_user_password"
                                                     value={newUser.password}
                                                     onChange={(e) => setNewUser({...newUser, password: e.target.value})}
                                                     placeholder="Enter password"
+                                                    autoComplete="new-password"
                                                     required
                                                 />
                                             </div>
@@ -233,6 +333,8 @@ const UserManagementPage = () => {
                             )}
                         </div>
                     </div>
+                        </>
+                    )}
                 </div>
             </div>
         </div>

@@ -204,8 +204,8 @@ const MonthlyBillingPage = () => {
 
     useEffect(() => {
         const checkUserRole = async () => {
-            const role = authService.getUserRole();
-            if (role !== 'ADMIN' && role !== 'admin') {
+            // Use unified helper so SUPER_ADMIN is included automatically
+            if (!authService.isAdminOrSuperAdmin()) {
                 navigate('/staff-dashboard');
                 return;
             }
