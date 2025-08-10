@@ -48,7 +48,7 @@ const login = async (userData) => {
         // Get user profile with role - Use admin client to bypass RLS during login
         let profile = null;
         
-        console.log('Looking for profile for user:', data.user.email, 'with ID:', data.user.id);
+    // (debug removed) Looking for profile for user
         
         // FIRST try to get by email using admin client (bypasses RLS)
         const { data: profileByEmail, error: profileError1 } = await supabaseAdmin
@@ -57,13 +57,13 @@ const login = async (userData) => {
             .eq('email', data.user.email)
             .single();
 
-        console.log('Profile by email:', profileByEmail, 'Error:', profileError1);
+    // (debug removed) profile by email check
 
         if (profileByEmail) {
             profile = profileByEmail;
             // Update the user_id in the profile if it's different
             if (profileByEmail.user_id !== data.user.id) {
-                console.log('Updating user_id in profile from', profileByEmail.user_id, 'to', data.user.id);
+                // (debug removed) updating user_id in profile
                 await supabaseAdmin
                     .from('user_profiles')
                     .update({ user_id: data.user.id })
@@ -77,22 +77,19 @@ const login = async (userData) => {
                 .eq('user_id', data.user.id)
                 .single();
 
-            console.log('Profile by user_id:', profileByUserId, 'Error:', profileError2);
+            // (debug removed) profile by user_id fallback
 
             if (profileByUserId) {
                 profile = profileByUserId;
             } else {
                 console.error('No profile found for user:', data.user.email);
-                console.log('⚠️  IMPORTANT: Will NOT create new profile - user should exist in database');
+                // (debug removed) warn about missing profile
                 // DO NOT create new profiles automatically - admin should be set up manually
                 throw new Error('User profile not found. Please contact administrator to set up your account.');
             }
         }
 
-        console.log('User profile found:', profile);
-        console.log('Profile role:', profile?.role);
-        console.log('User email:', data.user.email);
-        console.log('User ID:', data.user.id);
+    // (debug removed) profile details
 
         // Store the access token and user info
         if (data.session) {
@@ -109,14 +106,7 @@ const login = async (userData) => {
             localStorage.setItem('user_id', data.user.id);
             localStorage.setItem('is_super_admin', profile?.is_super_admin === true ? 'true' : 'false');
             
-            console.log('Stored role in localStorage:', userRole);
-            console.log('Super Admin status:', profile?.is_super_admin === true);
-            console.log('localStorage after setting:', {
-                email: localStorage.getItem('user_email'),
-                role: localStorage.getItem('user_role'),
-                id: localStorage.getItem('user_id'),
-                is_super_admin: localStorage.getItem('is_super_admin')
-            });
+            // (debug removed) stored role and super admin status
         }
 
         return {
@@ -284,7 +274,7 @@ const deleteUser = async (userId) => {
             console.warn('Profile deletion failed, but auth user was deleted:', profileError);
         }
 
-        console.log(`User ${userProfile.email} deleted by ${currentAdminLevel}`);
+    // (info removed) user deletion logged
         return { success: true };
     } catch (error) {
         console.error('Delete user error:', error);
@@ -334,8 +324,7 @@ const refreshUserRole = async () => {
             localStorage.setItem('user_role', userRole);
             localStorage.setItem('is_super_admin', profile.is_super_admin === true ? 'true' : 'false');
             
-            console.log('Refreshed role to:', userRole);
-            console.log('Super Admin status:', profile.is_super_admin === true);
+            // (debug removed) refreshed role and super admin status
             return userRole;
         }
 
@@ -362,12 +351,11 @@ const logOut = async () => {
 // Debug function to check user profile
 const debugUserProfile = async (email) => {
     try {
-        console.log('=== DEBUG: Checking user profile ===');
+    // (debug removed) start debugUserProfile
         
         // Check auth session first
         const { data: { session } } = await supabase.auth.getSession();
-        console.log('Current session:', session);
-        console.log('Current auth user:', session?.user);
+    // (debug removed) current session
         
         if (!session) {
             console.error('No active session found');
@@ -380,21 +368,21 @@ const debugUserProfile = async (email) => {
             .select('*')
             .eq('email', email);
             
-        console.log('User profiles for email:', email, profiles);
+    // (debug removed) user profiles for email
         if (error) console.error('Profile query error:', error);
         
         // Check all profiles
         const { data: allProfiles } = await supabase
             .from('user_profiles')
             .select('*');
-        console.log('All profiles in database:', allProfiles);
+    // (debug removed) all profiles listing
         
         // Also try by user_id
         const { data: profileById } = await supabase
             .from('user_profiles')
             .select('*')
             .eq('user_id', session.user.id);
-        console.log('Profile by current user ID:', profileById);
+    // (debug removed) profile by current user id
         
         return profiles;
     } catch (error) {

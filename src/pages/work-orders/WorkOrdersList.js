@@ -922,7 +922,6 @@ const handleSaveEdit = async (orderId) => {
     // Load trials for expanded work orders (not just editing) - moved before useEffect
     const loadTrialsForWorkOrder = useCallback(async (workOrderId) => {
         try {
-            console.log('Loading trials for work order:', workOrderId);
             const response = await dentalLabService.getTrialsByWorkOrder(workOrderId);
             
             if (response.success) {

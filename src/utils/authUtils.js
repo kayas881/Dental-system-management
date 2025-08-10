@@ -6,26 +6,22 @@ export const checkAuthSync = () => {
     const userRole = localStorage.getItem('user_role');
     const userId = localStorage.getItem('user_id');
     
-    console.log('checkAuthSync - localStorage check:', { 
-        hasToken: !!token, 
-        userRole, 
-        hasUserId: !!userId 
-    });
+        // debug removed
     
     // Check if we have both token and user info
     if (!token || !userId) {
-        console.log('checkAuthSync - Missing token or userId');
+            // debug removed
         return { isLoggedIn: false, role: null };
     }
     
     // Basic token validation (check if it looks like a JWT)
     const tokenParts = token.split('.');
     if (tokenParts.length !== 3) {
-        console.log('checkAuthSync - Invalid token format');
+            // debug removed
         return { isLoggedIn: false, role: null };
     }
     
-    console.log('checkAuthSync - Auth valid:', { isLoggedIn: true, role: userRole });
+        // debug removed
     return { isLoggedIn: true, role: userRole };
 };
 

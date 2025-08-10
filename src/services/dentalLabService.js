@@ -103,7 +103,7 @@ const createWorkOrder = async (workOrderData) => {
             delete cleanedData.id;
         }
 
-        console.log('Cleaned work order data:', cleanedData);
+    // debug removed: cleaned work order data
 
         const { data, error } = await supabase
             .from('work_orders')
@@ -200,7 +200,7 @@ const getWorkOrder = async (workOrderId) => {
 // Check if work order has existing bill
 const checkWorkOrderHasBill = async (workOrderId) => {
     try {
-        console.log(`Checking bill status for work order: ${workOrderId}`);
+    // debug removed: checking bill status
         
         // 🔁 Just get all bills for this work order (not limited to 1)
         const { data: regularBills, error: regularError } = await supabase
@@ -213,10 +213,10 @@ const checkWorkOrderHasBill = async (workOrderId) => {
             throw regularError;
         }
 
-        console.log(`Regular bills found for work order ${workOrderId}:`, regularBills);
+    // debug removed: regular bills found
 
         if (regularBills && regularBills.length > 0) {
-            console.log(`Work order ${workOrderId} has individual bill:`, regularBills[0]);
+            // debug removed: individual bill
             return { 
                 hasBill: true, 
                 data: regularBills[0], // take the first for display
@@ -239,10 +239,10 @@ const checkWorkOrderHasBill = async (workOrderId) => {
             throw itemsError;
         }
 
-        console.log(`Bill items found for work order ${workOrderId}:`, billItems);
+    // debug removed: bill items found
 
         if (billItems && billItems.length > 0) {
-            console.log(`Work order ${workOrderId} has grouped bill:`, billItems[0].bills);
+            // debug removed: grouped bill
             return { 
                 hasBill: true, 
                 data: billItems[0].bills, 
@@ -250,7 +250,7 @@ const checkWorkOrderHasBill = async (workOrderId) => {
             };
         }
 
-        console.log(`No bills found for work order ${workOrderId}`);
+    // debug removed: no bills found
         return { 
             hasBill: false, 
             data: null 
@@ -268,7 +268,7 @@ const createBill = async (billData) => {
         // Debug: Check authentication
         const userId = await authService.getUserId();
         const userRole = authService.getUserRole();
-        console.log('Creating bill with user:', { userId, userRole });
+    // debug removed: creating bill with user
         
         if (!userId) {
             throw new Error('User not authenticated - no user ID found');
@@ -276,7 +276,7 @@ const createBill = async (billData) => {
 
         // DUPLICATE CHECK: Ensure this work order doesn't already have a bill
         if (billData.work_order_id) {
-            console.log('Checking for existing bills for work order:', billData.work_order_id);
+            // debug removed: checking for existing bills
             const existingBillCheck = await checkWorkOrderHasBill(billData.work_order_id);
             if (existingBillCheck.hasBill) {
                 throw new Error(`Work order already has a bill (ID: ${existingBillCheck.data.id}). Cannot create duplicate bill.`);
@@ -292,7 +292,7 @@ const createBill = async (billData) => {
             notes: billData.notes === '' ? null : billData.notes
         };
 
-        console.log('Cleaned bill data:', cleanedData);
+    // debug removed: cleaned bill data
 
         const { data, error } = await supabase
             .from('bills')
@@ -323,7 +323,7 @@ const createGroupedBill = async (groupedBillData) => {
         // Debug: Check authentication
         const userId = await authService.getUserId();
         const userRole = authService.getUserRole();
-        console.log('Creating grouped bill with user:', { userId, userRole });
+    // debug removed: creating grouped bill with user
         
         if (!userId) {
             throw new Error('User not authenticated - no user ID found');
@@ -339,7 +339,7 @@ const createGroupedBill = async (groupedBillData) => {
                 throw new Error('Invalid user session - please log out and log in again');
             }
             validUserId = fixedUserId;
-            console.log('User session fixed, using ID:', fixedUserId);
+            // debug removed: user session fixed
         }
 
         const { work_order_ids, doctor_name, notes, tooth_numbers, is_grouped = true, batch_id } = groupedBillData;
@@ -348,7 +348,7 @@ const createGroupedBill = async (groupedBillData) => {
             throw new Error('No work orders selected for bill');
         }
 
-        console.log('Creating grouped bill for work orders:', work_order_ids);
+    // debug removed: creating grouped bill for work orders
 
         // Get work order details for validation and bill items
         const { data: workOrders, error: fetchError } = await supabase
@@ -364,7 +364,7 @@ const createGroupedBill = async (groupedBillData) => {
 
         // ENHANCED DUPLICATE CHECK: Ensure none of these work orders already have bills
         // This also handles race conditions from multiple devices/tabs
-        console.log('Checking for existing bills for work orders:', work_order_ids);
+    // debug removed: checking existing grouped bills
         
         // Check individual bills first
         const { data: existingIndividualBills, error: individualError } = await supabase
@@ -430,7 +430,7 @@ const createGroupedBill = async (groupedBillData) => {
             batch_id: batch_id || null // Include batch_id if provided
         };
 
-        console.log('Bill data to insert:', billData);
+    // debug removed: bill data to insert
 
         const { data: bill, error: billError } = await supabase
             .from('bills')
@@ -443,7 +443,7 @@ const createGroupedBill = async (groupedBillData) => {
             throw billError;
         }
 
-        console.log('Bill created successfully:', bill);
+    // debug removed: bill created
 
         // Create bill items for each work order
         const billItems = workOrders.map(order => ({
@@ -459,7 +459,7 @@ const createGroupedBill = async (groupedBillData) => {
             notes: order.feedback || null
         }));
 
-        console.log('Creating bill items:', billItems);
+    // debug removed: creating bill items
         
         const { data: items, error: itemsError } = await supabase
             .from('bill_items')
@@ -472,7 +472,7 @@ const createGroupedBill = async (groupedBillData) => {
             throw itemsError;
         }
 
-        console.log('Bill items created successfully:', items);
+    // debug removed: bill items created
 
         return { 
             success: true, 
@@ -573,7 +573,7 @@ const updateBillAmount = async (id, amount) => {
         // Ensure tooth_numbers is properly formatted as an array
         const tooth_numbers = Array.isArray(currentBill.tooth_numbers) ? currentBill.tooth_numbers : [];
         
-        console.log('Updating bill with:', { id, amount: parsedAmount, userId, tooth_numbers });
+    // debug removed: updating bill amount
         
         const { data, error } = await supabase
             .from('bills')
@@ -593,7 +593,7 @@ const updateBillAmount = async (id, amount) => {
             throw error;
         }
         
-        console.log('Bill updated successfully:', data);
+    // debug removed: bill updated
         return { data };
     } catch (error) {
         console.error('Update bill amount error:', error);
@@ -635,7 +635,7 @@ const updateBillStatus = async (id, status) => {
             throw error;
         }
         
-        console.log('Bill status updated successfully:', data);
+    // debug removed: bill status updated
         return { data };
     } catch (error) {
         console.error('Update bill status error:', error);
