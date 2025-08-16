@@ -250,7 +250,7 @@ const AdminDashboard = () => {
                         type: 'info',
                         title: 'Long-Running Orders',
                         message: `${longRunningOrders.length} orders running >2 weeks`,
-                        action: () => navigate('/work-orders-list'), // Navigate to work orders list instead
+                         action: null, // Do nothing on click
                         timestamp: new Date()
                     });
                 }
@@ -327,7 +327,7 @@ const AdminDashboard = () => {
                                                         <div 
                                                             key={notification.id} 
                                                             className={`p-3 border-bottom notification-item ${notification.type}`}
-                                                            style={{cursor: 'pointer'}}
+                                                            style={{ cursor: notification.action ? 'pointer' : 'default' }}
                                                             onClick={notification.action}
                                                         >
                                                             <div className="d-flex align-items-start">
