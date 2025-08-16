@@ -195,6 +195,19 @@ const getStatusBadge = (status) => {
                                 </div>
                             </div>
                             
+                            {/* --- NEW: Tooth Position for Mobile View --- */}
+                            <div className="row">
+                                <div className="col-6 mt-2">
+                                    <div className="mb-2">
+                                        <span className="text-muted">Tooth Position:</span><br/>
+                                        <BillToothDisplay 
+                                            toothNumbers={order.tooth_numbers}
+                                            size="small"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        
                             <div className="d-flex justify-content-between align-items-center mt-2">
                                 <div>
                                     {order.status === 'completed' && billStatus[order.id]?.hasBill && (
