@@ -497,19 +497,31 @@ const MonthlyBillingPage = () => {
         const generateQuadrantHTML = (toothNumbers) => {
             const quadrants = groupTeethByQuadrants(toothNumbers);
             
+            // Helper function to format tooth numbers for display
+            const formatToothNumbers = (toothArray) => {
+                if (toothArray.length === 0) return '';
+                const toothStr = toothArray.map(tooth => tooth.toString().slice(-1)).join('');
+                // If more than 6 digits, break into two lines
+                if (toothStr.length > 6) {
+                    const mid = Math.ceil(toothStr.length / 2);
+                    return `${toothStr.slice(0, mid)}<br>${toothStr.slice(mid)}`;
+                }
+                return toothStr;
+            };
+            
             return `
-                <div style="display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; width: 50px; height: 25px; border: 1px solid #333; font-size: 9px; font-family: monospace; margin: 0 auto; font-weight: bold;">
-                    <div style="border: 1px solid #666; padding: 0; background-color: ${quadrants.Q2.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 9px; font-weight: bold;">
-                        ${quadrants.Q2.length > 0 ? quadrants.Q2.map(tooth => tooth.toString().slice(-1)).join('') : ''}
+                <div style="display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; width: 65px; height: 35px; border: 1px solid #333; font-size: 7px; font-family: monospace; margin: 0 auto; font-weight: bold;">
+                    <div style="border: 1px solid #666; padding: 1px; background-color: ${quadrants.Q2.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 7px; font-weight: bold; line-height: 1.1; overflow: hidden;">
+                        ${formatToothNumbers(quadrants.Q2)}
                     </div>
-                    <div style="border: 1px solid #666; padding: 0; background-color: ${quadrants.Q1.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 9px; font-weight: bold;">
-                        ${quadrants.Q1.length > 0 ? quadrants.Q1.map(tooth => tooth.toString().slice(-1)).join('') : ''}
+                    <div style="border: 1px solid #666; padding: 1px; background-color: ${quadrants.Q1.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 7px; font-weight: bold; line-height: 1.1; overflow: hidden;">
+                        ${formatToothNumbers(quadrants.Q1)}
                     </div>
-                    <div style="border: 1px solid #666; padding: 0; background-color: ${quadrants.Q3.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 9px; font-weight: bold;">
-                        ${quadrants.Q3.length > 0 ? quadrants.Q3.map(tooth => tooth.toString().slice(-1)).join('') : ''}
+                    <div style="border: 1px solid #666; padding: 1px; background-color: ${quadrants.Q3.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 7px; font-weight: bold; line-height: 1.1; overflow: hidden;">
+                        ${formatToothNumbers(quadrants.Q3)}
                     </div>
-                    <div style="border: 1px solid #666; padding: 0; background-color: ${quadrants.Q4.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 9px; font-weight: bold;">
-                        ${quadrants.Q4.length > 0 ? quadrants.Q4.map(tooth => tooth.toString().slice(-1)).join('') : ''}
+                    <div style="border: 1px solid #666; padding: 1px; background-color: ${quadrants.Q4.length > 0 ? '#e8f4f8' : '#f9f9f9'}; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 7px; font-weight: bold; line-height: 1.1; overflow: hidden;">
+                        ${formatToothNumbers(quadrants.Q4)}
                     </div>
                 </div>
             `;
@@ -661,9 +673,9 @@ const MonthlyBillingPage = () => {
             border-radius: 0 0 8px 8px;
         }
         .serial-col { width: 8%; }
-        .patient-col { width: 18%; }
+        .patient-col { width: 16%; }
         .product-col { width: 20%; }
-        .tooth-col { width: 15%; }
+        .tooth-col { width: 18%; }
         .count-col { width: 8%; }
         .date-col { width: 12%; }
         .rate-col { width: 10%; }
@@ -807,21 +819,22 @@ table {
                 page-break-inside: avoid;
             }
             .serial-col { width: 8%; min-width: 8%; max-width: 8%; }
-            .patient-col { width: 18%; min-width: 18%; max-width: 18%; }
+            .patient-col { width: 16%; min-width: 16%; max-width: 16%; }
             .product-col { width: 20%; min-width: 20%; max-width: 20%; }
-            .tooth-col { width: 16%; min-width: 16%; max-width: 16%; }
+            .tooth-col { width: 18%; min-width: 18%; max-width: 18%; }
             .count-col { width: 8%; min-width: 8%; max-width: 8%; }
             .date-col { width: 12%; min-width: 12%; max-width: 12%; }
             .rate-col { width: 10%; min-width: 10%; max-width: 10%; }
-            .amount-col { width: 12%; min-width: 12%; max-width: 12%; }
+            .amount-col { width: 10%; min-width: 10%; max-width: 10%; }
             
             /* Enhanced quadrant display for print */
             .quadrant-container {
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                height: 4mm;
+                height: 6mm;
                 width: 100%;
+                padding: 0.5mm;
             }
         }
     </style>
