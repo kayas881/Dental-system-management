@@ -1294,13 +1294,7 @@ const getRevisionHistory = async (workOrderId) => {
     try {
         const { data, error } = await supabase
             .from('revision_history')
-            .select(`
-                *,
-                returned_by_user:returned_by(
-                    id,
-                    email
-                )
-            `)
+            .select('*')
             .eq('work_order_id', workOrderId)
             .order('revision_number', { ascending: true });
 
@@ -1735,13 +1729,7 @@ completeRevision: async (workOrderId, completionDate = null) => {
         try {
             const { data, error } = await supabase
                 .from('revision_history')
-                .select(`
-                    *,
-                    returned_by_user:returned_by(
-                        id,
-                        email
-                    )
-                `)
+                .select('*')
                 .eq('work_order_id', workOrderId)
                 .order('revision_number', { ascending: true });
 

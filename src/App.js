@@ -31,6 +31,7 @@ import { PrivateRoute } from './routes/PrivateRoute';
 import { AdminPrivateRoute } from './routes/AdminRoute';
 import { StaffRoute } from './routes/StaffRoute';
 import ProfessionalLayout from './components/Layout/ProfessionalLayout';
+import RevisionPanelManager from './components/RevisionPanelManager';
 
 function App() {
   return (
@@ -176,7 +177,7 @@ function App() {
 
 
    </Routes>
-   
+  <RevisionPanelManager />
    </>
   );
 }

@@ -3,6 +3,7 @@ import './WorkOrdersTable.css';
 import { printInitialBill } from './bills/BillPrintUtils';
 import { dentalLabService } from '../services/dentalLabService';
 import BillToothDisplay from '../components/BillToothDisplay';
+import RevisionStatusBadge from './RevisionStatusBadge';
 
 const WorkOrdersTable = ({ 
     filteredWorkOrders, 
@@ -151,6 +152,7 @@ const getStatusBadge = (status) => {
                                 <div>
                                     <div>
                                         <strong className="text-primary">{order.serial_number}</strong>
+                                        <RevisionStatusBadge order={order} formatDate={formatDate} />
                                         {order.batch_id && (
                                             <span className="badge bg-info ms-2">Batch ({order.batch_size})</span>
                                         )}
@@ -687,6 +689,7 @@ const getStatusBadge = (status) => {
                                         <td>
                                             <div>
                                                 <strong className="text-primary">{order.serial_number}</strong>
+                                                <RevisionStatusBadge order={order} formatDate={formatDate} />
                                                 {order.is_urgent && <span className="badge bg-danger ms-2">🔥 Urgent</span>}
                                                 {order.batch_id && (
                                                     <div>
