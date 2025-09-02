@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { authService } from "../../services/supabaseAuthService";
 import { dentalLabService } from "../../services/dentalLabService";
 import { useNavigate } from "react-router-dom";
@@ -25,6 +25,61 @@ const AdminDashboard = () => {
     const [lastRefresh, setLastRefresh] = useState(new Date());
     const navigate = useNavigate();
 
+    // Define loadNotifications with useCallback to prevent dependency issues
+    const loadNotifications = useCallback(async () => {
+        try {
+            const billsResponse = await dentalLabService.getAllBills();
+            const workOrdersResponse = await dentalLabService.getAllWorkOrders();
+            
+            const newNotifications = [];
+
+            if (billsResponse.data) {
+                // Bills without payment (need collection follow-up)
+                const unpaidBills = billsResponse.data.filter(bill => {
+                    const billDate = new Date(bill.bill_date);
+                    const daysAgo = (new Date() - billDate) / (1000 * 60 * 60 * 24);
+                    return daysAgo > 7 && bill.amount && bill.amount > 0 && bill.status === 'pending';
+                });
+                
+                if (unpaidBills.length > 0) {
+                    newNotifications.push({
+                        id: 'unpaid-bills',
+                        type: 'urgent',
+                        title: 'Bills Need Payment Follow-up',
+                        message: `${unpaidBills.length} priced bills need payment collection`,
+                        action: () => navigate('/admin/monthly-billing'),
+                        timestamp: new Date()
+                    });
+                }
+            }
+
+            if (workOrdersResponse.data) {
+                // Long-running work orders
+                const longRunningOrders = workOrdersResponse.data.filter(order => {
+                    if (order.status === 'completed') return false;
+                    const orderDate = new Date(order.order_date);
+                    const daysAgo = (new Date() - orderDate) / (1000 * 60 * 60 * 24);
+                    return daysAgo > 14; // More than 2 weeks
+                });
+
+                if (longRunningOrders.length > 0) {
+                    newNotifications.push({
+                        id: 'long-running-orders',
+                        type: 'info',
+                        title: 'Long-Running Orders',
+                        message: `${longRunningOrders.length} orders running >2 weeks`,
+                         action: null, // Do nothing on click
+                        timestamp: new Date()
+                    });
+                }
+            }
+
+            setNotifications(newNotifications);
+        } catch (error) {
+            console.error('Error loading notifications:', error);
+        }
+    }, [navigate]);
+
     useEffect(() => { 
         const loadUserData = async () => {
             // Get cached data
@@ -34,10 +89,15 @@ const AdminDashboard = () => {
             const email = authService.getUserEmail();
             setEmail(email);
 
-            // Refresh role from database
-            const freshRole = await authService.refreshUserRole();
-            if (freshRole && freshRole !== role) {
-                setUserRole(freshRole);
+            // Refresh role from database with error handling
+            try {
+                const freshRole = await authService.refreshUserRole();
+                if (freshRole && freshRole !== role) {
+                    setUserRole(freshRole);
+                }
+            } catch (error) {
+                console.warn('Could not refresh user role, using cached role:', error);
+                // Continue with cached role instead of failing
             }
 
             // Load user statistics
@@ -77,6 +137,10 @@ const AdminDashboard = () => {
                         e.preventDefault();
                         navigate('/user-management'); 
                         break;
+                    case 'w': 
+                        e.preventDefault();
+                        navigate('/admin/work-orders-list'); 
+                        break;
                     case 'r': 
                         e.preventDefault();
                         loadStats(); 
@@ -85,6 +149,9 @@ const AdminDashboard = () => {
                     case 'n': 
                         e.preventDefault();
                         setShowNotifications(!showNotifications); 
+                        break;
+                    default:
+                        // No action for other keys
                         break;
                 }
             }
@@ -97,7 +164,7 @@ const AdminDashboard = () => {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
             document.removeEventListener('keydown', handleKeyShortcuts);
         };
-    }, [navigate, showNotifications]);
+    }, [navigate, showNotifications, loadNotifications]);
 
     const loadStats = async () => {
         // Load user statistics
@@ -205,60 +272,6 @@ const AdminDashboard = () => {
             });
         } catch (error) {
             console.error('Error loading realtime stats:', error);
-        }
-    };
-
-    const loadNotifications = async () => {
-        try {
-            const billsResponse = await dentalLabService.getAllBills();
-            const workOrdersResponse = await dentalLabService.getAllWorkOrders();
-            
-            const newNotifications = [];
-
-            if (billsResponse.data) {
-                // Bills without payment (need collection follow-up)
-                const unpaidBills = billsResponse.data.filter(bill => {
-                    const billDate = new Date(bill.bill_date);
-                    const daysAgo = (new Date() - billDate) / (1000 * 60 * 60 * 24);
-                    return daysAgo > 7 && bill.amount && bill.amount > 0 && bill.status === 'pending';
-                });
-                
-                if (unpaidBills.length > 0) {
-                    newNotifications.push({
-                        id: 'unpaid-bills',
-                        type: 'urgent',
-                        title: 'Bills Need Payment Follow-up',
-                        message: `${unpaidBills.length} priced bills need payment collection`,
-                        action: () => navigate('/admin/monthly-billing'),
-                        timestamp: new Date()
-                    });
-                }
-            }
-
-            if (workOrdersResponse.data) {
-                // Long-running work orders
-                const longRunningOrders = workOrdersResponse.data.filter(order => {
-                    if (order.status === 'completed') return false;
-                    const orderDate = new Date(order.order_date);
-                    const daysAgo = (new Date() - orderDate) / (1000 * 60 * 60 * 24);
-                    return daysAgo > 14; // More than 2 weeks
-                });
-
-                if (longRunningOrders.length > 0) {
-                    newNotifications.push({
-                        id: 'long-running-orders',
-                        type: 'info',
-                        title: 'Long-Running Orders',
-                        message: `${longRunningOrders.length} orders running >2 weeks`,
-                         action: null, // Do nothing on click
-                        timestamp: new Date()
-                    });
-                }
-            }
-
-            setNotifications(newNotifications);
-        } catch (error) {
-            console.error('Error loading notifications:', error);
         }
     };
 
@@ -492,6 +505,41 @@ const AdminDashboard = () => {
                                     </div>
                                 </div>
                             </div>
+                            
+                            {/* New Work Order Management Section */}
+                            <div className="col-lg-4 col-md-6">
+                                <div className="card admin-action-card">
+                                    <div className="card-header">
+                                        <h5>🦷 Work Order Management</h5>
+                                    </div>
+                                    <div className="card-body">
+                                        <p>Advanced work order management with admin privileges to edit and delete any order.</p>
+                                        <div className="d-grid gap-2">
+                                            <button 
+                                                className="btn btn-info" 
+                                                onClick={() => navigate('/admin/work-orders-list')}
+                                            >
+                                                📋 Manage Work Orders
+                                            </button>
+                                            <button 
+                                                className="btn btn-outline-info" 
+                                                onClick={() => navigate('/admin/work-order-form')}
+                                            >
+                                                ➕ Create Work Order
+                                            </button>
+                                            <button 
+                                                className="btn btn-outline-secondary" 
+                                                onClick={() => navigate('/admin/batch-work-order')}
+                                            >
+                                                📦 Batch Creation
+                                            </button>
+                                            <div className="small text-muted">
+                                                Admin override permissions enabled
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Enhanced Admin Workflow */}
@@ -518,6 +566,13 @@ const AdminDashboard = () => {
                                                     <strong>👥 Users</strong>
                                                     <br />
                                                     <small>Ctrl+U • Account management</small>
+                                                </div>
+                                            </div>
+                                            <div className="col-md-3">
+                                                <div className="bg-light p-3 rounded text-center mb-3">
+                                                    <strong>🦷 Work Orders</strong>
+                                                    <br />
+                                                    <small>Ctrl+W • Manage orders</small>
                                                 </div>
                                             </div>
                                             <div className="col-md-3">
@@ -589,7 +644,7 @@ const AdminDashboard = () => {
             </div>
 
             {/* Add custom styles */}
-            <style jsx>{`
+            <style>{`
                 .admin-card {
                     transition: transform 0.3s ease, box-shadow 0.3s ease;
                     border-radius: 15px;

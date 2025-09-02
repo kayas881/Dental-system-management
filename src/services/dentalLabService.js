@@ -42,20 +42,79 @@ const formatPatientToothSummary = (patient_name, tooth_numbers) => {
     const sortedTeeth = [...tooth_numbers].sort((a, b) => a - b);
     return `${patient_name} → ${tooth_numbers.length} teeth: ${sortedTeeth.join(', ')}`;
 };
-const deleteWorkOrder = async (id) => {
+const deleteWorkOrder = async (id, isAdminOverride = false) => {
     try {
+        // Check if user is admin for override capabilities
+        const userRole = authService.getUserRole();
+        const isAdmin = authService.isAdminOrSuperAdmin() || isAdminOverride;
+
+        // First, check if the work order can be safely deleted
+        const { data: workOrder, error: fetchError } = await supabase
+            .from('work_orders')
+            .select('id, status, revision_count')
+            .eq('id', id)
+            .single();
+
+        if (fetchError) {
+            throw new Error(`Failed to fetch work order: ${fetchError.message}`);
+        }
+
+        if (!workOrder) {
+            throw new Error('Work order not found');
+        }
+
+        // Check if work order has been billed (only for non-admin users)
+        if (!isAdmin) {
+            const { data: billData, error: billError } = await supabase
+                .from('bills')
+                .select('id')
+                .eq('work_order_id', id)
+                .limit(1);
+
+            if (billError) {
+                throw new Error(`Failed to check billing status: ${billError.message}`);
+            }
+
+            // Prevent deletion if (for non-admin users):
+            // 1. Work order is completed
+            // 2. Work order is in revision
+            // 3. Work order has been billed
+            // 4. Work order has revision history
+            if (workOrder.status === 'completed') {
+                throw new Error('Cannot delete completed work order');
+            }
+            
+            if (workOrder.status === 'revision_in_progress') {
+                throw new Error('Cannot delete work order that is currently in revision');
+            }
+            
+            if (billData && billData.length > 0) {
+                throw new Error('Cannot delete work order that has been billed');
+            }
+            
+            if (workOrder.revision_count && workOrder.revision_count > 0) {
+                throw new Error('Cannot delete work order with revision history');
+            }
+        }
+
+        // If all checks pass or user is admin, proceed with deletion
         const { error } = await supabase
             .from('work_orders')
             .delete()
             .eq('id', id);
 
         if (error) throw error;
-        return { success: true };
+        
+        return { 
+            success: true, 
+            message: isAdmin ? 'Work order deleted by admin (override)' : 'Work order deleted successfully'
+        };
     } catch (error) {
         console.error('Delete work order error:', error);
         return { success: false, error: error.message };
     }
 };
+
 // Work Orders Management
 const createWorkOrder = async (workOrderData) => {
     try {
@@ -139,14 +198,67 @@ const getAllWorkOrders = async () => {
     }
 };
 
-const updateWorkOrder = async (id, updates) => {
+const updateWorkOrder = async (id, updates, isAdminOverride = false) => {
     try {
+        // Check if user has permission to edit
+        const isAdmin = authService.isAdminOrSuperAdmin() || isAdminOverride;
+        
+        // For non-admin users, add restrictions on what can be edited
+        if (!isAdmin) {
+            // Check if work order is in a state that prevents editing
+            const { data: workOrder, error: fetchError } = await supabase
+                .from('work_orders')
+                .select('status, revision_count')
+                .eq('id', id)
+                .single();
+
+            if (fetchError) {
+                throw new Error(`Failed to fetch work order: ${fetchError.message}`);
+            }
+
+            // Check if work order has been billed
+            const { data: billData, error: billError } = await supabase
+                .from('bills')
+                .select('id')
+                .eq('work_order_id', id)
+                .limit(1);
+
+            if (billError) {
+                throw new Error(`Failed to check billing status: ${billError.message}`);
+            }
+
+            // Prevent editing for non-admin users if work order is completed, billed, or has revision history
+            if (workOrder.status === 'completed') {
+                throw new Error('Cannot edit completed work order. Contact administrator.');
+            }
+            
+            if (billData && billData.length > 0) {
+                throw new Error('Cannot edit billed work order. Contact administrator.');
+            }
+            
+            if (workOrder.revision_count && workOrder.revision_count > 0) {
+                throw new Error('Cannot edit work order with revision history. Contact administrator.');
+            }
+        }
+
         // Clean up empty date strings - convert to null for database
-        const cleanedUpdates = { ...updates };
+        const cleanedUpdates = { 
+            ...updates,
+            updated_at: new Date().toISOString()
+        };
         
         if (cleanedUpdates.completion_date === '') cleanedUpdates.completion_date = null;
         if (cleanedUpdates.expected_complete_date === '') cleanedUpdates.expected_complete_date = null;
         if (cleanedUpdates.feedback === '') cleanedUpdates.feedback = null;
+        if (cleanedUpdates.trial_date_1 === '') cleanedUpdates.trial_date_1 = null;
+        if (cleanedUpdates.trial_date_2 === '') cleanedUpdates.trial_date_2 = null;
+
+        // Remove fields that shouldn't be updated directly (except for admin override)
+        if (!isAdmin) {
+            delete cleanedUpdates.serial_number;
+            delete cleanedUpdates.created_at;
+            delete cleanedUpdates.created_by;
+        }
 
         const { data, error } = await supabase
             .from('work_orders')
@@ -156,10 +268,15 @@ const updateWorkOrder = async (id, updates) => {
             .single();
 
         if (error) throw error;
-        return { data };
+        
+        return { 
+            success: true,
+            data,
+            message: isAdmin ? 'Work order updated by admin' : 'Work order updated successfully'
+        };
     } catch (error) {
         console.error('Update work order error:', error);
-        return { error };
+        return { success: false, error: error.message };
     }
 };
 

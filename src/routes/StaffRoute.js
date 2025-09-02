@@ -11,11 +11,14 @@ export const StaffRoute = ({children}) => {
         return <Navigate to="/" />;
     }
     
-    if (role !== 'USER') {
-        console.log('StaffRoute: User role is not USER, current role:', role);
+    // Allow USER, ADMIN, and SUPER_ADMIN roles to access staff routes
+    // Admins should have access to everything that staff can access
+    const allowedRoles = ['USER', 'ADMIN', 'SUPER_ADMIN'];
+    if (!allowedRoles.includes(role)) {
+        console.log('StaffRoute: User role not allowed, current role:', role);
         return <Navigate to="/" />;
     }
     
-    console.log('StaffRoute: Access granted');
+    console.log('StaffRoute: Access granted for role:', role);
     return children;
 }

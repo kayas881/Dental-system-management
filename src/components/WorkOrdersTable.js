@@ -44,6 +44,7 @@ const WorkOrdersTable = ({
     loadRevisionHistory,
     setDeletingOrder, // <-- Add this new prop
     handleToggleUrgent,
+    isAdmin = false, // <-- Add admin prop with default false
     
 }) => {
     const [expandedOrders, setExpandedOrders] = React.useState(new Set());
@@ -129,6 +130,19 @@ const getStatusBadge = (status) => {
     const isExpanded = (orderId) => expandedOrders.has(orderId);
     return (
         <div className="work-orders-container">
+            {/* Admin Mode Indicator */}
+            {isAdmin && (
+                <div className="alert alert-warning mb-3" role="alert">
+                    <div className="d-flex align-items-center">
+                        <i className="bi bi-shield-exclamation fs-4 me-2"></i>
+                        <div>
+                            <strong>🛡️ Administrator Mode Active</strong>
+                            <div className="small">You have enhanced permissions to edit and delete any work order, including completed and billed orders.</div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            
             {/* Mobile/Tablet Card View */}
             <div className="d-lg-none">
                 {filteredWorkOrders.map((order) => (
@@ -336,10 +350,20 @@ const getStatusBadge = (status) => {
                                          <button
                                         className="btn btn-outline-danger btn-sm"
                                         onClick={(e) => { e.stopPropagation(); setDeletingOrder(order); }}
-                                        disabled={order.status === 'completed' || billStatus[order.id]?.hasBill}
+                                        disabled={
+                                            !isAdmin && (
+                                                order.status === 'completed' || 
+                                                order.status === 'revision_in_progress' ||
+                                                billStatus[order.id]?.hasBill ||
+                                                (order.revision_count && order.revision_count > 0)
+                                            )
+                                        }
                                         title={
+                                            isAdmin ? 'Delete work order (Admin Override)' :
                                             order.status === 'completed' ? 'Cannot delete completed order' :
+                                            order.status === 'revision_in_progress' ? 'Cannot delete order in revision' :
                                             billStatus[order.id]?.hasBill ? 'Cannot delete billed order' :
+                                            (order.revision_count && order.revision_count > 0) ? 'Cannot delete order with revision history' :
                                             'Delete work order'
                                         }
                                     >
@@ -849,10 +873,20 @@ const getStatusBadge = (status) => {
                                                         <button
                                                             className="btn btn-outline-danger"
                                                             onClick={() => setDeletingOrder(order)}
-                                                            disabled={order.status === 'completed' || billStatus[order.id]?.hasBill}
+                                                            disabled={
+                                                                !isAdmin && (
+                                                                    order.status === 'completed' || 
+                                                                    order.status === 'revision_in_progress' ||
+                                                                    billStatus[order.id]?.hasBill ||
+                                                                    (order.revision_count && order.revision_count > 0)
+                                                                )
+                                                            }
                                                             title={
+                                                                isAdmin ? 'Delete work order (Admin Override)' :
                                                                 order.status === 'completed' ? 'Cannot delete completed order' :
+                                                                order.status === 'revision_in_progress' ? 'Cannot delete order in revision' :
                                                                 billStatus[order.id]?.hasBill ? 'Cannot delete billed order' :
+                                                                (order.revision_count && order.revision_count > 0) ? 'Cannot delete order with revision history' :
                                                                 'Delete work order'
                                                             }
                                                         >

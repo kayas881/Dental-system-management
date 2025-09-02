@@ -3,7 +3,7 @@ import { dentalLabService } from '../../services/dentalLabService';
 import { useNavigate } from 'react-router-dom';
 import ToothSelector from '../../components/ToothSelector';
 
-const WorkOrderForm = () => {
+const WorkOrderForm = ({ isAdmin = false }) => {
     // Product quality suggestions
     const productQualitySuggestions = [
         'Rpd',
@@ -282,15 +282,28 @@ const WorkOrderForm = () => {
                 <div className="col-md-8">
                     <div className="card">
                         <div className="card-header d-flex justify-content-between align-items-center">
-                            <h4>🦷 New Work Order Entry</h4>
+                            <h4>🦷 New Work Order Entry {isAdmin && <span className="badge bg-warning text-dark ms-2">Admin Mode</span>}</h4>
                             <button 
                                 className="btn btn-secondary btn-sm" 
-                                onClick={() => navigate('/staff-dashboard')}
+                                onClick={() => navigate(isAdmin ? '/admin-dashboard' : '/staff-dashboard')}
                             >
                                 Back to Dashboard
                             </button>
                         </div>
                         <div className="card-body">
+                            {/* Admin Mode Indicator */}
+                            {isAdmin && (
+                                <div className="alert alert-info mb-3" role="alert">
+                                    <div className="d-flex align-items-center">
+                                        <i className="bi bi-shield-check fs-5 me-2"></i>
+                                        <div>
+                                            <strong>🛡️ Administrator Mode</strong>
+                                            <div className="small">You are creating work orders with administrative privileges.</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            
                             {message && (
                                 <div className={`alert ${message.includes('Error') ? 'alert-danger' : 'alert-success'}`}>
                                     {message}

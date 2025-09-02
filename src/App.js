@@ -108,6 +108,34 @@ function App() {
     }>
     </Route>
 
+    {/* Admin Work Order Routes with Enhanced Permissions */}
+    <Route path='/admin/work-orders-list' element={
+    <AdminPrivateRoute>
+      <ProfessionalLayout>
+        <WorkOrdersList isAdmin={true} /> 
+      </ProfessionalLayout>
+    </AdminPrivateRoute>
+    }>
+    </Route>
+
+    <Route path='/admin/work-order-form' element={
+    <AdminPrivateRoute>
+      <ProfessionalLayout>
+        <WorkOrderForm isAdmin={true} /> 
+      </ProfessionalLayout>
+    </AdminPrivateRoute>
+    }>
+    </Route>
+
+    <Route path='/admin/batch-work-order' element={
+    <AdminPrivateRoute>
+      <ProfessionalLayout>
+        <BatchWorkOrderForm isAdmin={true} /> 
+      </ProfessionalLayout>
+    </AdminPrivateRoute>
+    }>
+    </Route>
+
     <Route path='/create-bill' element={
     <StaffRoute>
       <ProfessionalLayout>

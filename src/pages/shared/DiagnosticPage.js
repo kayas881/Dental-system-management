@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { dentalLabService } from '../../services/dentalLabService';
 import { supabase } from '../../supabase/supabaseClient';
 import { useNavigate } from 'react-router-dom';
+import { authService } from '../../services/supabaseAuthService';
 
 const DiagnosticPage = () => {
     const [workOrders, setWorkOrders] = useState([]);
@@ -9,9 +10,13 @@ const DiagnosticPage = () => {
     const [message, setMessage] = useState('');
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [connectionStatus, setConnectionStatus] = useState('');
+    const [userRole, setUserRole] = useState('');
     const navigate = useNavigate();
 
     useEffect(() => {
+        // Get user role for navigation
+        const role = authService.getUserRole();
+        setUserRole(role);
         testSupabaseConnection();
         loadDiagnosticData();
     }, []);
@@ -93,7 +98,7 @@ const DiagnosticPage = () => {
                     <h4>🔍 Diagnostic Page</h4>
                     <button 
                         className="btn btn-secondary" 
-                        onClick={() => navigate('/staff-dashboard')}
+                        onClick={() => navigate(userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' ? '/admin-dashboard' : '/staff-dashboard')}
                     >
                         Back to Dashboard
                     </button>

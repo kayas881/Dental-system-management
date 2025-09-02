@@ -3,7 +3,7 @@ import { dentalLabService } from '../../services/dentalLabService';
 import { useNavigate } from 'react-router-dom';
 import WorkOrdersTable from '../../components/WorkOrdersTable';
 
-const WorkOrdersList = () => {
+const WorkOrdersList = ({ isAdmin = false }) => {
     // Generate unique tab identifier to prevent race conditions across tabs
     const [tabId] = useState(() => `tab_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
     
@@ -61,10 +61,11 @@ const WorkOrdersList = () => {
         const orderToDelete = deletingOrder; // Keep a reference
         setDeletingOrder(null); // Close the modal immediately
 
-        const response = await dentalLabService.deleteWorkOrder(orderToDelete.id);
+        const response = await dentalLabService.deleteWorkOrder(orderToDelete.id, isAdmin);
         
         if (response.success) {
-            showTemporaryMessage(`Work order ${orderToDelete.serial_number} deleted successfully!`);
+            const message = isAdmin && response.message ? response.message : `Work order ${orderToDelete.serial_number} deleted successfully!`;
+            showTemporaryMessage(message);
             await loadWorkOrders(); // Refresh the list
         } else {
             showTemporaryMessage(`Error deleting work order: ${response.error}`, true);
@@ -260,14 +261,15 @@ const WorkOrdersList = () => {
 
 const handleSaveEdit = async (orderId) => {
         setLoading(true);
-        const response = await dentalLabService.updateWorkOrder(orderId, editData);
-        if (response.data) {
-            showTemporaryMessage('Work order updated successfully!');
+        const response = await dentalLabService.updateWorkOrder(orderId, editData, isAdmin);
+        if (response.success) {
+            const message = isAdmin && response.message ? response.message : 'Work order updated successfully!';
+            showTemporaryMessage(message);
             setEditingOrder(null);
             setEditData({ feedback: '' });
             loadWorkOrders();
         } else {
-            showTemporaryMessage('Error updating work order', true);
+            showTemporaryMessage(`Error updating work order: ${response.error}`, true);
         }
         setLoading(false);
     };
@@ -1131,7 +1133,7 @@ const handleSaveEdit = async (orderId) => {
                                 </button>
                                 <button 
                                     className="btn btn-secondary" 
-                                    onClick={() => navigate('/staff-dashboard')}
+                                    onClick={() => navigate(isAdmin ? '/admin-dashboard' : '/staff-dashboard')}
                                 >
                                     Back to Dashboard
                                 </button>
@@ -1482,7 +1484,8 @@ const handleSaveEdit = async (orderId) => {
                                         handleAddTrial={handleAddTrial}
                                         handleDeleteTrial={handleDeleteTrial}
                                         setDeletingOrder={setDeletingOrder}
-                        handleToggleUrgent={handleToggleUrgent}
+                                        handleToggleUrgent={handleToggleUrgent}
+                                        isAdmin={isAdmin}
                                     />
 
                          {/* Selection Summary */}

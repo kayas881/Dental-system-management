@@ -71,7 +71,7 @@ const RevisionPanelManager = ({ formatDate }) => {
                   {rev.new_expected_completion_date && <span className="me-2"><strong>New ETA:</strong> {formatDate ? formatDate(rev.new_expected_completion_date) : rev.new_expected_completion_date}</span>}
                   {rev.revision_notes && <div className="text-muted"><em>{rev.revision_notes}</em></div>}
                   <div className="mt-1">
-                    {active ? <span className="badge bg-info text-dark">Active</span> : <span className="badge bg-success">Done</span>}
+                                        {active ? <span className="badge bg-info text-dark">Active</span> : <span className="badge bg-success">Done</span>}
                   </div>
                 </div>
               </li>

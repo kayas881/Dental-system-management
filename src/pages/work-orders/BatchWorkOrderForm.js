@@ -3,7 +3,7 @@ import { dentalLabService } from '../../services/dentalLabService';
 import { useNavigate } from 'react-router-dom';
 import ToothSelector from '../../components/ToothSelector';
 
-const BatchWorkOrderForm = () => {
+const BatchWorkOrderForm = ({ isAdmin = false }) => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
@@ -196,7 +196,7 @@ const BatchWorkOrderForm = () => {
                                 </button>
                                 <button 
                                     className="btn btn-secondary btn-sm" 
-                                    onClick={() => navigate('/staff-dashboard')}
+                                    onClick={() => navigate(isAdmin ? '/admin-dashboard' : '/staff-dashboard')}
                                 >
                                     Back to Dashboard
                                 </button>

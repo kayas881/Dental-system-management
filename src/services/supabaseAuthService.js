@@ -298,8 +298,8 @@ const refreshUserRole = async () => {
         const userId = await getUserId();
         
         if (!userEmail || !userId) {
-            console.error('No user email or ID found');
-            return null;
+            console.warn('No user email or ID found for role refresh');
+            return getUserRole(); // Return cached role instead of null
         }
 
         // Get fresh role from database using admin client to bypass RLS
@@ -310,8 +310,8 @@ const refreshUserRole = async () => {
             .single();
 
         if (error) {
-            console.error('Error refreshing user role:', error);
-            return null;
+            console.warn('Error refreshing user role, using cached role:', error);
+            return getUserRole(); // Return cached role on error
         }
 
         // Update localStorage with fresh role and super admin status
@@ -324,14 +324,15 @@ const refreshUserRole = async () => {
             localStorage.setItem('user_role', userRole);
             localStorage.setItem('is_super_admin', profile.is_super_admin === true ? 'true' : 'false');
             
-            // (debug removed) refreshed role and super admin status
+            console.log('User role refreshed successfully:', userRole);
             return userRole;
         }
 
-        return null;
+        // If no profile found, return cached role
+        return getUserRole();
     } catch (error) {
-        console.error('Error refreshing user role:', error);
-        return null;
+        console.warn('Error refreshing user role, using cached role:', error);
+        return getUserRole(); // Return cached role instead of null on any error
     }
 };
 
