@@ -112,9 +112,7 @@ const BatchWorkOrderForm = () => {
                 if (!order.product_shade.trim()) {
                     validationErrors.push(`Order #${index + 1}: Product shade is required`);
                 }
-                if (!order.tooth_numbers || order.tooth_numbers.length === 0) {
-                    validationErrors.push(`Order #${index + 1} (${order.patient_name || 'Unnamed patient'}): Please select tooth positions`);
-                }
+                // Tooth numbers are now optional - removed validation
             });
 
             if (validationErrors.length > 0) {

@@ -208,9 +208,7 @@ const WorkOrderForm = () => {
             errors.expected_complete_date = 'Expected completion date cannot be before order date';
         }
         
-        if (formData.tooth_numbers.length === 0) {
-            errors.tooth_numbers = `Please select the specific teeth that will be worked on for ${formData.patient_name || 'this patient'}`;
-        }
+        // Tooth numbers are now optional - removed validation
         
         setValidationErrors(errors);
         return Object.keys(errors).length === 0;

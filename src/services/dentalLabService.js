@@ -10,11 +10,9 @@ const validatePatientToothSelection = (patient_name, tooth_numbers) => {
         errors.push('Patient name is required for tooth selection');
     }
     
-    // Validate tooth numbers
-    if (!tooth_numbers || !Array.isArray(tooth_numbers) || tooth_numbers.length === 0) {
-        errors.push(`Please select at least one tooth position for ${patient_name || 'this patient'}`);
-    } else {
-        // Validate FDI tooth numbers
+    // Validate tooth numbers (optional - can be empty array)
+    if (tooth_numbers && Array.isArray(tooth_numbers) && tooth_numbers.length > 0) {
+        // Only validate tooth numbers if they are provided
         const invalidTeeth = tooth_numbers.filter(tooth => {
             const num = parseInt(tooth);
             return !(
@@ -61,7 +59,7 @@ const deleteWorkOrder = async (id) => {
 // Work Orders Management
 const createWorkOrder = async (workOrderData) => {
     try {
-        // ... (keep the existing validation and user checks)
+        // Validate patient name and tooth numbers if provided
         const validation = validatePatientToothSelection(workOrderData.patient_name, workOrderData.tooth_numbers);
         if (!validation.isValid) {
             throw new Error(`Patient-tooth validation failed: ${validation.errors.join(', ')}`);

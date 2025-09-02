@@ -78,7 +78,7 @@ const ToothSelector = ({ selectedTeeth, onTeethChange, disabled = false, patient
                                 <div>
                                     <h6 className="mb-1 text-primary">Selecting Teeth for Patient:</h6>
                                     <div className="fw-bold fs-5">{patientName}</div>
-                                    <small className="text-muted">Choose the specific tooth positions that will be worked on</small>
+                                    <small className="text-muted">Choose the specific tooth positions that will be worked on (optional)</small>
                                 </div>
                             </div>
                         </div>
@@ -95,7 +95,7 @@ const ToothSelector = ({ selectedTeeth, onTeethChange, disabled = false, patient
 
             <div className="d-flex justify-content-between align-items-center mb-3">
                 <label className="form-label fw-bold mb-0">
-                    🦷 Tooth Position(s) {patientName && `for ${patientName}`}
+                    🦷 Tooth Position(s) {patientName && `for ${patientName}`} <small className="text-muted fw-normal">(Optional)</small>
                 </label>
                 <div className="btn-group btn-group-sm" role="group">
                     <button
