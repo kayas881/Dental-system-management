@@ -3,7 +3,14 @@
   "version": "1.0.0",
   "description": "Professional dental lab management system with dual bill printing and work order tracking",
   "private": true,
-  "keywords": ["dental", "laboratory", "billing", "management", "react", "supabase"],
+  "keywords": [
+    "dental",
+    "laboratory",
+    "billing",
+    "management",
+    "react",
+    "supabase"
+  ],
   "author": "Your Company Name",
   "dependencies": {
     "@supabase/supabase-js": "^2.50.2",
@@ -41,5 +48,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "supabase": "^2.31.8"
   }
 }
