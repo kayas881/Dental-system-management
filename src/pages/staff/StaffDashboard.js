@@ -53,12 +53,11 @@ const StaffDashboard = () => {
                 const allOrders = workOrdersResponse.data;
                 
                 // Calculate work order stats
-                const urgent = allOrders.filter(o => o.is_urgent === true).length;
+                const urgent = allOrders.filter(o => o.is_urgent === true && o.status !== 'completed').length;
                 
-                // Calculate revisions in progress (orders with revision_number > 0 and not completed)
+                // Calculate revisions in progress (orders with status 'Revision in Progress')
                 const revisionsInProgress = allOrders.filter(o => {
-                    const revisionNum = parseInt(o.revision_number) || 0;
-                    return revisionNum > 0 && o.status !== 'completed';
+                    return o.status === 'Revision in Progress' || o.status === 'revision_in_progress';
                 }).length;
                 
                 // Calculate overdue orders (past expected completion date)
