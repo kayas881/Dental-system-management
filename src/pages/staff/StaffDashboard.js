@@ -57,8 +57,8 @@ const StaffDashboard = () => {
                 const allOrders = workOrdersResponse.data;
                 
                 // Debug: Log the actual number of orders
-                console.log('Total orders loaded:', allOrders.length);
-                console.log('First few orders:', allOrders.slice(0, 3));
+                console.log('Total orders from API:', allOrders.length);
+                console.log('Sample orders:', allOrders.slice(0, 3));
                 
                 // Calculate work order stats
                 const urgent = allOrders.filter(o => o.is_urgent === true && o.status !== 'completed').length;
@@ -106,7 +106,6 @@ const StaffDashboard = () => {
                     revisionsInProgress: revisionsInProgress
                 };
                 
-                console.log('Actual array length:', allOrders.length);
                 console.log('Setting work order stats:', statsToSet);
                 setWorkOrderStats(statsToSet);
             }
