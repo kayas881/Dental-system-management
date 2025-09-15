@@ -185,13 +185,31 @@ const createWorkOrder = async (workOrderData) => {
 
 const getAllWorkOrders = async () => {
     try {
-        const { data, error } = await supabase
-            .from('work_orders')
-            .select('*')
-            .order('created_at', { ascending: false });
+        // Fetch all work orders using pagination to overcome Supabase 1000 row limit
+        let allData = [];
+        let hasMore = true;
+        let from = 0;
+        const limit = 1000;
 
-        if (error) throw error;
-        return { data };
+        while (hasMore) {
+            const { data, error } = await supabase
+                .from('work_orders')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .range(from, from + limit - 1);
+
+            if (error) throw error;
+
+            if (data && data.length > 0) {
+                allData = [...allData, ...data];
+                from += limit;
+                hasMore = data.length === limit; // Continue if we got a full batch
+            } else {
+                hasMore = false;
+            }
+        }
+
+        return { data: allData };
     } catch (error) {
         console.error('Get work orders error:', error);
         return { error };
@@ -613,13 +631,31 @@ const getAllBills = async () => {
             ? '*' 
             : 'id, work_order_id, doctor_name, patient_name, work_description, serial_number, completion_date, bill_date, status, created_at, updated_at, is_grouped, batch_id, tooth_numbers, notes';
         
-        const { data, error } = await supabase
-            .from('bills')
-            .select(selectFields)
-            .order('created_at', { ascending: false });
+        // Fetch all bills using pagination to overcome Supabase 1000 row limit
+        let allData = [];
+        let hasMore = true;
+        let from = 0;
+        const limit = 1000;
 
-        if (error) throw error;
-        return { data };
+        while (hasMore) {
+            const { data, error } = await supabase
+                .from('bills')
+                .select(selectFields)
+                .order('created_at', { ascending: false })
+                .range(from, from + limit - 1);
+
+            if (error) throw error;
+
+            if (data && data.length > 0) {
+                allData = [...allData, ...data];
+                from += limit;
+                hasMore = data.length === limit; // Continue if we got a full batch
+            } else {
+                hasMore = false;
+            }
+        }
+
+        return { data: allData };
     } catch (error) {
         console.error('Get bills error:', error);
         return { error };
@@ -637,14 +673,32 @@ const getMyBills = async () => {
         // Staff can see all bill details except amount
         const selectFields = 'id, work_order_id, doctor_name, patient_name, work_description, serial_number, completion_date, bill_date, status, created_at, updated_at, is_grouped, batch_id, tooth_numbers, notes';
         
-        const { data, error } = await supabase
-            .from('bills')
-            .select(selectFields)
-            .eq('created_by', userId)
-            .order('created_at', { ascending: false });
+        // Fetch all user bills using pagination to overcome Supabase 1000 row limit
+        let allData = [];
+        let hasMore = true;
+        let from = 0;
+        const limit = 1000;
 
-        if (error) throw error;
-        return { data };
+        while (hasMore) {
+            const { data, error } = await supabase
+                .from('bills')
+                .select(selectFields)
+                .eq('created_by', userId)
+                .order('created_at', { ascending: false })
+                .range(from, from + limit - 1);
+
+            if (error) throw error;
+
+            if (data && data.length > 0) {
+                allData = [...allData, ...data];
+                from += limit;
+                hasMore = data.length === limit; // Continue if we got a full batch
+            } else {
+                hasMore = false;
+            }
+        }
+
+        return { data: allData };
     } catch (error) {
         console.error('Get my bills error:', error);
         return { error };
