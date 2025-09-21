@@ -44,11 +44,14 @@ const formatPatientToothSummary = (patient_name, tooth_numbers) => {
 };
 const deleteWorkOrder = async (id, isAdminOverride = false) => {
     try {
-        // Check if user is admin for override capabilities
-        const userRole = authService.getUserRole();
+        // Only admins can delete work orders
         const isAdmin = authService.isAdminOrSuperAdmin() || isAdminOverride;
+        
+        if (!isAdmin) {
+            throw new Error('Only administrators can delete work orders. Contact your administrator.');
+        }
 
-        // First, check if the work order can be safely deleted
+        // First, check if the work order exists
         const { data: workOrder, error: fetchError } = await supabase
             .from('work_orders')
             .select('id, status, revision_count')
@@ -63,41 +66,7 @@ const deleteWorkOrder = async (id, isAdminOverride = false) => {
             throw new Error('Work order not found');
         }
 
-        // Check if work order has been billed (only for non-admin users)
-        if (!isAdmin) {
-            const { data: billData, error: billError } = await supabase
-                .from('bills')
-                .select('id')
-                .eq('work_order_id', id)
-                .limit(1);
-
-            if (billError) {
-                throw new Error(`Failed to check billing status: ${billError.message}`);
-            }
-
-            // Prevent deletion if (for non-admin users):
-            // 1. Work order is completed
-            // 2. Work order is in revision
-            // 3. Work order has been billed
-            // 4. Work order has revision history
-            if (workOrder.status === 'completed') {
-                throw new Error('Cannot delete completed work order');
-            }
-            
-            if (workOrder.status === 'revision_in_progress') {
-                throw new Error('Cannot delete work order that is currently in revision');
-            }
-            
-            if (billData && billData.length > 0) {
-                throw new Error('Cannot delete work order that has been billed');
-            }
-            
-            if (workOrder.revision_count && workOrder.revision_count > 0) {
-                throw new Error('Cannot delete work order with revision history');
-            }
-        }
-
-        // If all checks pass or user is admin, proceed with deletion
+        // Admin can delete any work order (full override capability)
         const { error } = await supabase
             .from('work_orders')
             .delete()
@@ -107,7 +76,7 @@ const deleteWorkOrder = async (id, isAdminOverride = false) => {
         
         return { 
             success: true, 
-            message: isAdmin ? 'Work order deleted by admin (override)' : 'Work order deleted successfully'
+            message: 'Work order deleted by admin'
         };
     } catch (error) {
         console.error('Delete work order error:', error);
@@ -221,43 +190,8 @@ const updateWorkOrder = async (id, updates, isAdminOverride = false) => {
         // Check if user has permission to edit
         const isAdmin = authService.isAdminOrSuperAdmin() || isAdminOverride;
         
-        // For non-admin users, add restrictions on what can be edited
-        if (!isAdmin) {
-            // Check if work order is in a state that prevents editing
-            const { data: workOrder, error: fetchError } = await supabase
-                .from('work_orders')
-                .select('status, revision_count')
-                .eq('id', id)
-                .single();
-
-            if (fetchError) {
-                throw new Error(`Failed to fetch work order: ${fetchError.message}`);
-            }
-
-            // Check if work order has been billed
-            const { data: billData, error: billError } = await supabase
-                .from('bills')
-                .select('id')
-                .eq('work_order_id', id)
-                .limit(1);
-
-            if (billError) {
-                throw new Error(`Failed to check billing status: ${billError.message}`);
-            }
-
-            // Prevent editing for non-admin users if work order is completed, billed, or has revision history
-            if (workOrder.status === 'completed') {
-                throw new Error('Cannot edit completed work order. Contact administrator.');
-            }
-            
-            if (billData && billData.length > 0) {
-                throw new Error('Cannot edit billed work order. Contact administrator.');
-            }
-            
-            if (workOrder.revision_count && workOrder.revision_count > 0) {
-                throw new Error('Cannot edit work order with revision history. Contact administrator.');
-            }
-        }
+        // Staff can now edit work orders (removed most restrictions)
+        // Only basic validation remains for data integrity
 
         // Clean up empty date strings - convert to null for database
         const cleanedUpdates = { 

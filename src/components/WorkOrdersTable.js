@@ -347,28 +347,16 @@ const getStatusBadge = (status) => {
                             >
                                 🔥
                             </button>
-                                         <button
-                                        className="btn btn-outline-danger btn-sm"
-                                        onClick={(e) => { e.stopPropagation(); setDeletingOrder(order); }}
-                                        disabled={
-                                            !isAdmin && (
-                                                order.status === 'completed' || 
-                                                order.status === 'revision_in_progress' ||
-                                                billStatus[order.id]?.hasBill ||
-                                                (order.revision_count && order.revision_count > 0)
-                                            )
-                                        }
-                                        title={
-                                            isAdmin ? 'Delete work order (Admin Override)' :
-                                            order.status === 'completed' ? 'Cannot delete completed order' :
-                                            order.status === 'revision_in_progress' ? 'Cannot delete order in revision' :
-                                            billStatus[order.id]?.hasBill ? 'Cannot delete billed order' :
-                                            (order.revision_count && order.revision_count > 0) ? 'Cannot delete order with revision history' :
-                                            'Delete work order'
-                                        }
-                                    >
-                                        🗑️
-                                    </button>
+                                         {/* Only show delete button for admins */}
+                                         {isAdmin && (
+                                             <button
+                                                className="btn btn-outline-danger btn-sm"
+                                                onClick={(e) => { e.stopPropagation(); setDeletingOrder(order); }}
+                                                title="Delete work order (Admin Only)"
+                                            >
+                                                🗑️
+                                            </button>
+                                         )}
                                     </div>
                                 )}
                             </div>
@@ -870,28 +858,16 @@ const getStatusBadge = (status) => {
                                             🔥
                                         </button>
 
-                                                        <button
-                                                            className="btn btn-outline-danger"
-                                                            onClick={() => setDeletingOrder(order)}
-                                                            disabled={
-                                                                !isAdmin && (
-                                                                    order.status === 'completed' || 
-                                                                    order.status === 'revision_in_progress' ||
-                                                                    billStatus[order.id]?.hasBill ||
-                                                                    (order.revision_count && order.revision_count > 0)
-                                                                )
-                                                            }
-                                                            title={
-                                                                isAdmin ? 'Delete work order (Admin Override)' :
-                                                                order.status === 'completed' ? 'Cannot delete completed order' :
-                                                                order.status === 'revision_in_progress' ? 'Cannot delete order in revision' :
-                                                                billStatus[order.id]?.hasBill ? 'Cannot delete billed order' :
-                                                                (order.revision_count && order.revision_count > 0) ? 'Cannot delete order with revision history' :
-                                                                'Delete work order'
-                                                            }
-                                                        >
-                                                            🗑️
-                                                        </button>
+                                        {/* Only show delete button for admins */}
+                                        {isAdmin && (
+                                            <button
+                                                className="btn btn-outline-danger"
+                                                onClick={() => setDeletingOrder(order)}
+                                                title="Delete work order (Admin Only)"
+                                            >
+                                                🗑️
+                                            </button>
+                                        )}
                                                     </>
                                                 )}
                                             </div>
