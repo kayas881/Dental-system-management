@@ -347,16 +347,25 @@ const getStatusBadge = (status) => {
                             >
                                 🔥
                             </button>
-                                         {/* Only show delete button for admins */}
-                                         {isAdmin && (
-                                             <button
-                                                className="btn btn-outline-danger btn-sm"
-                                                onClick={(e) => { e.stopPropagation(); setDeletingOrder(order); }}
-                                                title="Delete work order (Admin Only)"
-                                            >
-                                                🗑️
-                                            </button>
-                                         )}
+                                         {/* Show delete button with restrictions based on status */}
+                                         <button
+                                            className="btn btn-outline-danger btn-sm"
+                                            onClick={(e) => { e.stopPropagation(); setDeletingOrder(order); }}
+                                            disabled={
+                                                !isAdmin && (
+                                                    order.status === 'completed' ||
+                                                    billStatus[order.id]?.hasBill
+                                                )
+                                            }
+                                            title={
+                                                isAdmin ? 'Delete work order (Admin)' :
+                                                order.status === 'completed' ? 'Cannot delete completed order (Admin only)' :
+                                                billStatus[order.id]?.hasBill ? 'Cannot delete billed order (Admin only)' :
+                                                'Delete work order'
+                                            }
+                                        >
+                                            🗑️
+                                        </button>
                                     </div>
                                 )}
                             </div>
@@ -858,16 +867,25 @@ const getStatusBadge = (status) => {
                                             🔥
                                         </button>
 
-                                        {/* Only show delete button for admins */}
-                                        {isAdmin && (
-                                            <button
-                                                className="btn btn-outline-danger"
-                                                onClick={() => setDeletingOrder(order)}
-                                                title="Delete work order (Admin Only)"
-                                            >
-                                                🗑️
-                                            </button>
-                                        )}
+                                        {/* Show delete button with restrictions based on status */}
+                                        <button
+                                            className="btn btn-outline-danger"
+                                            onClick={() => setDeletingOrder(order)}
+                                            disabled={
+                                                !isAdmin && (
+                                                    order.status === 'completed' ||
+                                                    billStatus[order.id]?.hasBill
+                                                )
+                                            }
+                                            title={
+                                                isAdmin ? 'Delete work order (Admin)' :
+                                                order.status === 'completed' ? 'Cannot delete completed order (Admin only)' :
+                                                billStatus[order.id]?.hasBill ? 'Cannot delete billed order (Admin only)' :
+                                                'Delete work order'
+                                            }
+                                        >
+                                            🗑️
+                                        </button>
                                                     </>
                                                 )}
                                             </div>

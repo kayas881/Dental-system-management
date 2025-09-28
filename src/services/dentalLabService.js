@@ -44,13 +44,9 @@ const formatPatientToothSummary = (patient_name, tooth_numbers) => {
 };
 const deleteWorkOrder = async (id, isAdminOverride = false) => {
     try {
-        // Only admins can delete work orders
+        // Check user permissions
         const isAdmin = authService.isAdminOrSuperAdmin() || isAdminOverride;
         
-        if (!isAdmin) {
-            throw new Error('Only administrators can delete work orders. Contact your administrator.');
-        }
-
         // First, check if the work order exists
         const { data: workOrder, error: fetchError } = await supabase
             .from('work_orders')
@@ -66,7 +62,29 @@ const deleteWorkOrder = async (id, isAdminOverride = false) => {
             throw new Error('Work order not found');
         }
 
-        // Admin can delete any work order (full override capability)
+        // Staff can delete work orders ONLY if they are not completed
+        if (!isAdmin) {
+            if (workOrder.status === 'completed') {
+                throw new Error('Cannot delete completed work order. Only administrators can delete completed orders.');
+            }
+            
+            // Check if work order has been billed (additional protection)
+            const { data: billData, error: billError } = await supabase
+                .from('bills')
+                .select('id')
+                .eq('work_order_id', id)
+                .limit(1);
+
+            if (billError) {
+                throw new Error(`Failed to check billing status: ${billError.message}`);
+            }
+            
+            if (billData && billData.length > 0) {
+                throw new Error('Cannot delete work order that has been billed. Contact administrator.');
+            }
+        }
+
+        // Proceed with deletion
         const { error } = await supabase
             .from('work_orders')
             .delete()
@@ -76,7 +94,7 @@ const deleteWorkOrder = async (id, isAdminOverride = false) => {
         
         return { 
             success: true, 
-            message: 'Work order deleted by admin'
+            message: isAdmin ? 'Work order deleted by admin' : 'Work order deleted successfully'
         };
     } catch (error) {
         console.error('Delete work order error:', error);
