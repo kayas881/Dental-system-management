@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { dentalLabService } from '../../services/dentalLabService';
+import { authService } from '../../services/supabaseAuthService';
 import { useNavigate } from 'react-router-dom';
 import WorkOrdersTable from '../../components/WorkOrdersTable';
 
@@ -1133,7 +1134,10 @@ const handleSaveEdit = async (orderId) => {
                                 </button>
                                 <button 
                                     className="btn btn-secondary" 
-                                    onClick={() => navigate(isAdmin ? '/admin-dashboard' : '/staff-dashboard')}
+                                    onClick={() => {
+                                        const isActualAdmin = authService.isAdminOrSuperAdmin();
+                                        navigate(isActualAdmin ? '/admin-dashboard' : '/staff-dashboard');
+                                    }}
                                 >
                                     Back to Dashboard
                                 </button>

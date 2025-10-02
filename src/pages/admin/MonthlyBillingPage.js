@@ -263,6 +263,30 @@ const MonthlyBillingPage = () => {
         }
     };
 
+    // Function to restore rates from bill history
+    const restoreRatesFromBillHistory = (billData) => {
+        if (billData.rates_data) {
+            setRates(billData.rates_data);
+        } else if (billData.work_orders) {
+            // Calculate rates from amounts and teeth counts
+            const calculatedRates = {};
+            billData.work_orders.forEach(order => {
+                if (order.amount && order.teeth_count && order.teeth_count > 0) {
+                    calculatedRates[order.id] = (parseFloat(order.amount) / order.teeth_count).toFixed(2);
+                } else if (order.rate) {
+                    calculatedRates[order.id] = order.rate;
+                } else {
+                    calculatedRates[order.id] = 0;
+                }
+            });
+            setRates(calculatedRates);
+        }
+        
+        if (billData.pricing_data) {
+            setPricing(billData.pricing_data);
+        }
+    };
+
     const loadWorkOrdersForMonth = async () => {
         if (!selectedDoctor || !selectedMonth) return;
 
@@ -293,12 +317,12 @@ const MonthlyBillingPage = () => {
                 
                 setWorkOrders(filtered);
                 
-                // Initialize pricing and rates with existing amounts or 0
+                // Initialize pricing and rates with existing amounts and rates
                 const initialPricing = {};
                 const initialRates = {};
                 filtered.forEach(order => {
                     initialPricing[order.id] = order.amount || 0;
-                    initialRates[order.id] = 0; // Default rate to 0
+                    initialRates[order.id] = order.rate || 0; // Load existing rate or default to 0
                 });
                 setPricing(initialPricing);
                 setRates(initialRates);
@@ -346,8 +370,16 @@ const MonthlyBillingPage = () => {
         try {
             for (const workOrderId in pricing) {
                 const price = parseFloat(pricing[workOrderId]);
-                if (price > 0) {
-                    const response = await dentalLabService.updateWorkOrderAmount(workOrderId, price);
+                const rate = parseFloat(rates[workOrderId] || 0);
+                
+                if (price > 0 || rate > 0) {
+                    // Use the new function that saves both rate and amount
+                    const response = await dentalLabService.updateWorkOrderPricing(
+                        workOrderId, 
+                        rate > 0 ? rate : null, 
+                        price > 0 ? price : null
+                    );
+                    
                     if (response.data) {
                         savedCount++;
                     } else {
@@ -357,7 +389,7 @@ const MonthlyBillingPage = () => {
             }
 
             if (errors.length === 0) {
-                setMessage(`Successfully saved prices for ${savedCount} work orders`);
+                setMessage(`Successfully saved pricing for ${savedCount} work orders`);
                 // Reload to show updated data
                 loadWorkOrdersForMonth();
             } else {
@@ -376,17 +408,20 @@ const MonthlyBillingPage = () => {
         }
 
         try {
-            // Create consolidated bill data
+            // Create consolidated bill data with both rates and amounts
             const billData = {
                 doctor_name: selectedDoctor,
                 month: selectedMonth,
                 work_orders: workOrders.map(order => ({
                     ...order,
                     amount: parseFloat(pricing[order.id] || 0),
-                    rate: parseFloat(rates[order.id] || 0)
+                    rate: parseFloat(rates[order.id] || 0),
+                    teeth_count: countTeeth(order.tooth_numbers)
                 })),
                 total_amount: totalAmount,
-                generated_date: new Date().toISOString().split('T')[0]
+                generated_date: new Date().toISOString().split('T')[0],
+                rates_data: rates, // Save the rates separately for reconstruction
+                pricing_data: pricing // Save the pricing separately
             };
 
             // Save to history before printing
@@ -880,7 +915,7 @@ table {
                     <td class="tooth-col" style="text-align: center; vertical-align: middle;">${generateQuadrantHTML(order.tooth_numbers)}</td>
                     <td class="product-col">${order.product_quality}</td>
                     <td class="count-col" style="text-align: center;"><strong>${countTeethForPrint(order.tooth_numbers)}</strong></td>
-                    <td class="rate-col amount">${rates[order.id] ? parseFloat(rates[order.id]).toFixed(2) : '0.00'}</td>
+                    <td class="rate-col amount">${order.rate ? parseFloat(order.rate).toFixed(2) : (order.amount && order.teeth_count > 0 ? (parseFloat(order.amount) / order.teeth_count).toFixed(2) : '0.00')}</td>
                     <td class="amount-col amount">${order.amount ? parseFloat(order.amount).toFixed(2) : '0.00'}</td>
                 </tr>
             `).join('')}

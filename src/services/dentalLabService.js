@@ -1189,6 +1189,12 @@ const updateWorkOrderAmount = async (id, amount) => {
 
         if (error) {
             console.error('Error updating work order amount:', error);
+            
+            // Handle the case where amount column doesn't exist yet
+            if (error.message && error.message.includes("Could not find the 'amount' column")) {
+                throw new Error('The amount column is missing from the work_orders table. Please run the database migration: add_amount_column_to_work_orders.sql');
+            }
+            
             throw error;
         }
         
@@ -1196,6 +1202,64 @@ const updateWorkOrderAmount = async (id, amount) => {
         return { data };
     } catch (error) {
         console.error('Update work order amount error:', error);
+        return { error: error.message || error };
+    }
+};
+
+// Update work order rate and amount - admin only
+const updateWorkOrderPricing = async (id, rate, amount) => {
+    try {
+        const userId = await authService.getUserId();
+        if (!userId) {
+            throw new Error('User not authenticated');
+        }
+
+        // Check if user is admin
+        if (!authService.isAdminOrSuperAdmin()) {
+            throw new Error('Access denied. Only administrators can update work order pricing.');
+        }
+
+        // Validate rate and amount
+        const parsedRate = rate ? parseFloat(rate) : null;
+        const parsedAmount = amount ? parseFloat(amount) : null;
+        
+        if (parsedRate !== null && (isNaN(parsedRate) || parsedRate <= 0)) {
+            throw new Error('Invalid rate. Rate must be a positive number.');
+        }
+        
+        if (parsedAmount !== null && (isNaN(parsedAmount) || parsedAmount <= 0)) {
+            throw new Error('Invalid amount. Amount must be a positive number.');
+        }
+
+        const updateData = {
+            updated_at: new Date().toISOString()
+        };
+        
+        if (parsedRate !== null) updateData.rate = parsedRate;
+        if (parsedAmount !== null) updateData.amount = parsedAmount;
+
+        const { data, error } = await supabase
+            .from('work_orders')
+            .update(updateData)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Error updating work order pricing:', error);
+            
+            // Handle the case where columns don't exist yet
+            if (error.message && (error.message.includes("Could not find the 'amount' column") || error.message.includes("Could not find the 'rate' column"))) {
+                throw new Error('The amount/rate columns are missing from the work_orders table. Please run the database migration: add_amount_column_to_work_orders.sql');
+            }
+            
+            throw error;
+        }
+        
+        console.log('Work order pricing updated successfully:', data);
+        return { data };
+    } catch (error) {
+        console.error('Update work order pricing error:', error);
         return { error: error.message || error };
     }
 };
@@ -1626,6 +1690,7 @@ getWorkOrdersWithBatchInfo,
     getBillsByDateRange,
     getBillsStats,
     updateWorkOrderAmount,
+    updateWorkOrderPricing,
 
     // Monthly Bills History Management
     saveMonthlyBillHistory: async (billData) => {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { dentalLabService } from '../../services/dentalLabService';
+import { authService } from '../../services/supabaseAuthService';
 import { useNavigate } from 'react-router-dom';
 import ToothSelector from '../../components/ToothSelector';
 
@@ -285,7 +286,11 @@ const WorkOrderForm = ({ isAdmin = false }) => {
                             <h4>🦷 New Work Order Entry {isAdmin && <span className="badge bg-warning text-dark ms-2">Admin Mode</span>}</h4>
                             <button 
                                 className="btn btn-secondary btn-sm" 
-                                onClick={() => navigate(isAdmin ? '/admin-dashboard' : '/staff-dashboard')}
+                                onClick={() => {
+                                    const userRole = authService.getUserRole();
+                                    const isActualAdmin = authService.isAdminOrSuperAdmin();
+                                    navigate(isActualAdmin ? '/admin-dashboard' : '/staff-dashboard');
+                                }}
                             >
                                 Back to Dashboard
                             </button>

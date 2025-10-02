@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { dentalLabService } from '../../services/dentalLabService';
+import { authService } from '../../services/supabaseAuthService';
 import { useNavigate } from 'react-router-dom';
 import ToothSelector from '../../components/ToothSelector';
 
@@ -196,7 +197,10 @@ const BatchWorkOrderForm = ({ isAdmin = false }) => {
                                 </button>
                                 <button 
                                     className="btn btn-secondary btn-sm" 
-                                    onClick={() => navigate(isAdmin ? '/admin-dashboard' : '/staff-dashboard')}
+                                    onClick={() => {
+                                        const isActualAdmin = authService.isAdminOrSuperAdmin();
+                                        navigate(isActualAdmin ? '/admin-dashboard' : '/staff-dashboard');
+                                    }}
                                 >
                                     Back to Dashboard
                                 </button>
