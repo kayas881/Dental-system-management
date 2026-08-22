@@ -2,6 +2,10 @@
 
 A comprehensive billing and work order management system designed specifically for dental laboratories. This professional-grade application streamlines operations with dual role authentication, advanced bill printing capabilities, and complete work order tracking.
 
+## 🎥 Demo Video
+
+[Watch the Demo Video](demo/demo.mp4)
+
 ## 🌟 Key Features
 
 ### 🔐 **Dual Role System**
@@ -181,24 +185,3 @@ This is a private project. For modifications or enhancements, please follow the 
 ---
 
 **Built with ❤️ for dental laboratories** | **Professional Grade** | **Production Ready**
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
-# React_multiple_role_example
