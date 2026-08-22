@@ -4,7 +4,12 @@ A comprehensive billing and work order management system designed specifically f
 
 ## 🎥 Demo Video
 
-<video src="./demo/demo.mp4" controls width="800"></video>
+
+<div align="center">
+  <video src="https://github.com/user-attachments/assets/32b640ce-aa08-4ff1-8b6d-4cbfb58ed4d6" width="60%"> </video>
+</div>
+
+
 
 ## 🌟 Key Features
 
