@@ -344,6 +344,54 @@ const checkWorkOrderHasBill = async (workOrderId) => {
     }
 };
 
+const getBillStatusesForOrders = async (workOrderIds) => {
+    if (!workOrderIds?.length) return { data: {} };
+
+    try {
+        const [regularResponse, groupedResponse] = await Promise.all([
+            supabase
+                .from('bills')
+                .select('id, status, bill_date, work_order_id')
+                .in('work_order_id', workOrderIds),
+            supabase
+                .from('bill_items')
+                .select('work_order_id, bills!inner(id, status, bill_date, is_grouped)')
+                .in('work_order_id', workOrderIds)
+        ]);
+
+        if (regularResponse.error) throw regularResponse.error;
+        if (groupedResponse.error) throw groupedResponse.error;
+
+        const statuses = {};
+        workOrderIds.forEach(id => {
+            statuses[id] = { hasBill: false, billData: null };
+        });
+
+        regularResponse.data?.forEach(bill => {
+            statuses[bill.work_order_id] = {
+                hasBill: true,
+                billData: bill,
+                billType: 'individual'
+            };
+        });
+
+        groupedResponse.data?.forEach(item => {
+            if (!statuses[item.work_order_id]?.hasBill) {
+                statuses[item.work_order_id] = {
+                    hasBill: true,
+                    billData: item.bills,
+                    billType: 'grouped'
+                };
+            }
+        });
+
+        return { data: statuses };
+    } catch (error) {
+        console.error('Batch bill status check error:', error);
+        return { error };
+    }
+};
+
 
 // Bills Management
 const createBill = async (billData) => {
@@ -1704,6 +1752,7 @@ export const dentalLabService = {
     getWorkOrder,
     getWorkOrderBySerial,
     checkWorkOrderHasBill,
+    getBillStatusesForOrders,
 getWorkOrdersWithBatchInfo,
     getBatchWorkOrders,
     canBatchBeBilled,

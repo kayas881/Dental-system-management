@@ -134,59 +134,17 @@ const WorkOrdersList = ({ isAdmin = false }) => {
     // Check which orders already have bills (run in background)
     const checkBillStatusForOrders = async (orders) => {
         try {
-            const billStatusMap = {};
-            
             // Check all completed orders (increased limit to ensure recent ones are included)
             const completedOrders = orders
                 .filter(order => order.status === 'completed')
                 .slice(0, 100); // Increased from 50 to 100 to catch more recent orders
             
             console.log('Checking bill status for', completedOrders.length, 'completed orders');
-            
-            // Use Promise.allSettled to handle individual failures gracefully
-            const billChecks = completedOrders.map(async (order) => {
-                try {
-                    const response = await dentalLabService.checkWorkOrderHasBill(order.id);
-                    if (response.hasBill) {
-                        return {
-                            orderId: order.id,
-                            status: {
-                                hasBill: true,
-                                billData: response.data,
-                                billType: response.billType // 'individual' or 'grouped'
-                            }
-                        };
-                    } else {
-                        return {
-                            orderId: order.id,
-                            status: {
-                                hasBill: false,
-                                billData: null
-                            }
-                        };
-                    }
-                } catch (error) {
-                    console.error('Error checking bill status for order:', order.id, error);
-                    return {
-                        orderId: order.id,
-                        status: {
-                            hasBill: false,
-                            billData: null,
-                            error: true
-                        }
-                    };
-                }
-            });
-            
-            // Wait for all checks to complete (or fail)
-            const results = await Promise.allSettled(billChecks);
-            
-            // Process results
-            results.forEach((result) => {
-                if (result.status === 'fulfilled' && result.value) {
-                    billStatusMap[result.value.orderId] = result.value.status;
-                }
-            });
+            const response = await dentalLabService.getBillStatusesForOrders(
+                completedOrders.map(order => order.id)
+            );
+            if (response.error) throw response.error;
+            const billStatusMap = response.data || {};
             
             console.log('Bill status check completed for', Object.keys(billStatusMap).length, 'orders');
             console.log('Bill status map:', billStatusMap);
