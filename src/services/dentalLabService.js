@@ -1670,6 +1670,30 @@ const deleteTrial = async (trialId) => {
     }
 };
 
+// Dashboard summaries are calculated in PostgreSQL so the browser does not
+// repeatedly download the complete work-orders and bills tables.
+const getAdminDashboardSummary = async () => {
+    try {
+        const { data, error } = await supabase.rpc('get_admin_dashboard_summary');
+        if (error) throw error;
+        return { data };
+    } catch (error) {
+        console.error('Get admin dashboard summary error:', error);
+        return { error };
+    }
+};
+
+const getStaffDashboardSummary = async () => {
+    try {
+        const { data, error } = await supabase.rpc('get_staff_dashboard_summary');
+        if (error) throw error;
+        return { data };
+    } catch (error) {
+        console.error('Get staff dashboard summary error:', error);
+        return { error };
+    }
+};
+
 // Validation Helpers
 export const dentalLabService = {
     // Work Orders
@@ -1687,6 +1711,8 @@ getWorkOrdersWithBatchInfo,
     deleteWorkOrder,
     toggleUrgentStatus,
     normalizeDoctorName,
+    getAdminDashboardSummary,
+    getStaffDashboardSummary,
 
     
     // Bills

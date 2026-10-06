@@ -28,50 +28,31 @@ const AdminDashboard = () => {
     // Define loadNotifications with useCallback to prevent dependency issues
     const loadNotifications = useCallback(async () => {
         try {
-            const billsResponse = await dentalLabService.getAllBills();
-            const workOrdersResponse = await dentalLabService.getAllWorkOrders();
-            
+            const response = await dentalLabService.getAdminDashboardSummary();
+            if (response.error) throw response.error;
+            const summary = response.data || {};
             const newNotifications = [];
 
-            if (billsResponse.data) {
-                // Bills without payment (need collection follow-up)
-                const unpaidBills = billsResponse.data.filter(bill => {
-                    const billDate = new Date(bill.bill_date);
-                    const daysAgo = (new Date() - billDate) / (1000 * 60 * 60 * 24);
-                    return daysAgo > 7 && bill.amount && bill.amount > 0 && bill.status === 'pending';
+            if (Number(summary.unpaidBills || 0) > 0) {
+                newNotifications.push({
+                    id: 'unpaid-bills',
+                    type: 'urgent',
+                    title: 'Bills Need Payment Follow-up',
+                    message: `${summary.unpaidBills} priced bills need payment collection`,
+                    action: () => navigate('/admin/monthly-billing'),
+                    timestamp: new Date()
                 });
-                
-                if (unpaidBills.length > 0) {
-                    newNotifications.push({
-                        id: 'unpaid-bills',
-                        type: 'urgent',
-                        title: 'Bills Need Payment Follow-up',
-                        message: `${unpaidBills.length} priced bills need payment collection`,
-                        action: () => navigate('/admin/monthly-billing'),
-                        timestamp: new Date()
-                    });
-                }
             }
 
-            if (workOrdersResponse.data) {
-                // Long-running work orders
-                const longRunningOrders = workOrdersResponse.data.filter(order => {
-                    if (order.status === 'completed') return false;
-                    const orderDate = new Date(order.order_date);
-                    const daysAgo = (new Date() - orderDate) / (1000 * 60 * 60 * 24);
-                    return daysAgo > 14; // More than 2 weeks
+            if (Number(summary.longRunningOrders || 0) > 0) {
+                newNotifications.push({
+                    id: 'long-running-orders',
+                    type: 'info',
+                    title: 'Long-Running Orders',
+                    message: `${summary.longRunningOrders} orders running >2 weeks`,
+                    action: null,
+                    timestamp: new Date()
                 });
-
-                if (longRunningOrders.length > 0) {
-                    newNotifications.push({
-                        id: 'long-running-orders',
-                        type: 'info',
-                        title: 'Long-Running Orders',
-                        message: `${longRunningOrders.length} orders running >2 weeks`,
-                         action: null, // Do nothing on click
-                        timestamp: new Date()
-                    });
-                }
             }
 
             setNotifications(newNotifications);
@@ -118,13 +99,6 @@ const AdminDashboard = () => {
 
         document.addEventListener('visibilitychange', handleVisibilityChange);
 
-        // Set up real-time updates every 30 seconds
-        const interval = setInterval(() => {
-            loadRealtimeStats();
-            loadNotifications();
-            setLastRefresh(new Date());
-        }, 30000);
-
         // Set up keyboard shortcuts
         const handleKeyShortcuts = (e) => {
             if (e.ctrlKey || e.metaKey) {
@@ -148,7 +122,7 @@ const AdminDashboard = () => {
                         break;
                     case 'n': 
                         e.preventDefault();
-                        setShowNotifications(!showNotifications); 
+                        setShowNotifications(current => !current);
                         break;
                     default:
                         // No action for other keys
@@ -160,115 +134,35 @@ const AdminDashboard = () => {
         document.addEventListener('keydown', handleKeyShortcuts);
 
         return () => {
-            clearInterval(interval);
             document.removeEventListener('visibilitychange', handleVisibilityChange);
             document.removeEventListener('keydown', handleKeyShortcuts);
         };
-    }, [navigate, showNotifications, loadNotifications]);
+    }, [navigate, loadNotifications]);
 
     const loadStats = async () => {
-        // Load user statistics
-        const userResponse = await authService.getAllUsers();
-        let userStats = {
-            totalUsers: 0,
-            totalStaff: 0,
-            totalAdmins: 0
-        };
-        
-        if (userResponse.data) {
-            const users = userResponse.data;
-            userStats = {
-                totalUsers: users.length,
-                totalStaff: users.filter(user => user.role === 'USER').length,
-                totalAdmins: users.filter(user => user.role === 'ADMIN').length
-            };
-        }
-
-        // Load dental lab statistics
-        const workOrdersResponse = await dentalLabService.getAllWorkOrders();
-        const billsResponse = await dentalLabService.getAllBills();
-        
-        let labStats = {
-            totalWorkOrders: 0,
-            totalBills: 0,
-            pendingBills: 0,
-            monthlyRevenue: 0
-        };
-
-        if (workOrdersResponse.data) {
-            labStats.totalWorkOrders = workOrdersResponse.data.length;
-        }
-
-        if (billsResponse.data) {
-            const bills = billsResponse.data;
-            labStats.totalBills = bills.length;
-            labStats.pendingBills = bills.filter(b => b.status === 'pending').length;
-            
-            // Calculate this month's revenue
-            const currentMonth = new Date().getMonth();
-            const currentYear = new Date().getFullYear();
-            labStats.monthlyRevenue = bills
-                .filter(bill => {
-                    const billDate = new Date(bill.bill_date);
-                    return billDate.getMonth() === currentMonth && 
-                           billDate.getFullYear() === currentYear &&
-                           bill.amount;
-                })
-                .reduce((sum, bill) => sum + parseFloat(bill.amount || 0), 0);
-        }
-
+        const response = await dentalLabService.getAdminDashboardSummary();
+        if (response.error) throw response.error;
+        const summary = response.data || {};
         setStats({
-            ...userStats,
-            ...labStats
+            totalUsers: Number(summary.totalUsers || 0),
+            totalStaff: Number(summary.totalStaff || 0),
+            totalAdmins: Number(summary.totalAdmins || 0),
+            totalWorkOrders: Number(summary.totalWorkOrders || 0),
+            totalBills: Number(summary.totalBills || 0),
+            pendingBills: Number(summary.pendingBills || 0),
+            monthlyRevenue: Number(summary.monthlyRevenue || 0)
         });
     };
 
     const loadRealtimeStats = async () => {
         try {
-            // Get monthly bills stats from history
-            const monthlyBillsStatsResponse = await dentalLabService.getMonthlyBillsStats();
-            let monthlyStats = {
-                currentMonthRevenue: 0,
-                currentMonthBills: 0,
-                totalCompletedBills: 0
-            };
-            
-            if (monthlyBillsStatsResponse.data) {
-                monthlyStats = monthlyBillsStatsResponse.data;
-            }
-
-            const currentDate = new Date();
-            const currentMonth = currentDate.getMonth();
-            const currentYear = currentDate.getFullYear();
-            
-            // Get work orders for current month
-            const workOrdersResponse = await dentalLabService.getAllWorkOrders();
-            
-            const currentMonthOrders = workOrdersResponse.data?.filter(order => {
-                const orderDate = new Date(order.completion_date || order.created_at);
-                return orderDate.getMonth() === currentMonth && 
-                       orderDate.getFullYear() === currentYear;
-            }).length || 0;
-
-            // Get unique doctors count
-            const uniqueDoctors = new Set();
-            workOrdersResponse.data?.forEach(order => {
-                if (order.doctor_name) {
-                    // Normalize doctor name for counting
-                    const normalizedName = order.doctor_name
-                        .replace(/^(dr\.?|doctor)\s+/i, '')
-                        .trim()
-                        .toLowerCase();
-                    if (normalizedName) {
-                        uniqueDoctors.add(normalizedName);
-                    }
-                }
-            });
-
+            const response = await dentalLabService.getAdminDashboardSummary();
+            if (response.error) throw response.error;
+            const summary = response.data || {};
             setRealtimeStats({
-                currentMonthOrders: currentMonthOrders,
-                currentMonthRevenue: monthlyStats.currentMonthRevenue, // From completed bills
-                totalDoctors: uniqueDoctors.size
+                currentMonthOrders: Number(summary.currentMonthOrders || 0),
+                currentMonthRevenue: Number(summary.currentMonthRevenue || 0),
+                totalDoctors: Number(summary.totalDoctors || 0)
             });
         } catch (error) {
             console.error('Error loading realtime stats:', error);

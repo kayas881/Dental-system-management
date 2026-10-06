@@ -115,5 +115,9 @@ test-script.sh
 # Archive files
 project.zip
 
+# Production database exports (contain sensitive client data)
+/migration-backup/
+/.env.migration.local
+
 # Screenshots and documentation images
 SCREENSHOTS.md

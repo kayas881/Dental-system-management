@@ -22,8 +22,8 @@ const SystemMonitorPage = () => {
     const [recentActivity, setRecentActivity] = useState([]);
     const [systemAlerts, setSystemAlerts] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [autoRefresh, setAutoRefresh] = useState(true);
-    const [refreshInterval, setRefreshInterval] = useState(30); // seconds
+    const [autoRefresh, setAutoRefresh] = useState(false);
+    const [refreshInterval, setRefreshInterval] = useState(300); // seconds
 
     useEffect(() => {
         loadSystemData();
@@ -60,12 +60,14 @@ const SystemMonitorPage = () => {
         try {
             // Test database connection
             const dbStart = Date.now();
-            await dentalLabService.getAllWorkOrders();
+            const databaseCheck = await dentalLabService.getAdminDashboardSummary();
+            if (databaseCheck.error) throw databaseCheck.error;
             const dbResponseTime = Date.now() - dbStart;
             
             // Test auth service
             const authStart = Date.now();
-            await authService.getAllUsers();
+            const userId = await authService.getUserId();
+            if (!userId) throw new Error('No authenticated user');
             const authResponseTime = Date.now() - authStart;
             
             // Calculate API response time
@@ -102,12 +104,13 @@ const SystemMonitorPage = () => {
     const loadSystemStats = async () => {
         try {
             // Generate realistic system stats
-            const users = await authService.getAllUsers();
-            const workOrders = await dentalLabService.getAllWorkOrders();
+            const response = await dentalLabService.getAdminDashboardSummary();
+            if (response.error) throw response.error;
+            const summary = response.data || {};
             
             // Simulate system metrics
             const activeUsers = Math.floor(Math.random() * 10) + 2;
-            const totalSessions = users.data?.length * 2 + Math.floor(Math.random() * 20);
+            const totalSessions = Number(summary.totalUsers || 0);
             const avgResponseTime = Math.floor(Math.random() * 500) + 200;
             const errorRate = Math.random() * 2; // 0-2%
             const uptimeHours = Math.floor(Math.random() * 72) + 24;

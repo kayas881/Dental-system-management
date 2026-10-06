@@ -44,101 +44,26 @@ const StaffDashboard = () => {
     const loadStats = async () => {
         setLoading(true);
         try {
-            // Force fresh data by adding timestamp to prevent caching
-            const timestamp = Date.now();
-            console.log('Loading stats at:', new Date().toLocaleTimeString(), 'timestamp:', timestamp);
-            
-            const workOrdersResponse = await dentalLabService.getAllWorkOrders();
-            const billsResponse = await dentalLabService.getAllBills();
-            const today = new Date();
-            const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+            const response = await dentalLabService.getStaffDashboardSummary();
+            if (response.error) throw response.error;
 
-            if (workOrdersResponse.data) {
-                const allOrders = workOrdersResponse.data;
-                
-                // Debug: Log the actual number of orders
-                console.log('Total orders from API:', allOrders.length);
-                console.log('Sample orders:', allOrders.slice(0, 3));
-                
-                // Calculate work order stats
-                const urgent = allOrders.filter(o => o.is_urgent === true && o.status !== 'completed').length;
-                
-                // Calculate revisions in progress (orders with status 'Revision in Progress')
-                const revisionsInProgress = allOrders.filter(o => {
-                    return o.status === 'Revision in Progress' || o.status === 'revision_in_progress';
-                }).length;
-                
-                // Calculate overdue orders (past expected completion date, or > 7 days old)
-                const overdue = allOrders.filter(o => {
-                    if (o.status === 'completed' || o.status === 'cancelled') return false;
-                    if (o.expected_complete_date) {
-                        const expectedDate = new Date(o.expected_complete_date);
-                        return expectedDate < today;
-                    } else if (o.order_date) {
-                        const orderDate = new Date(o.order_date);
-                        const daysOld = (today - orderDate) / (1000 * 60 * 60 * 24);
-                        return daysOld > 7;
-                    }
-                    return false;
-                }).length;
-                
-                // Recent orders (this week)
-                const recentOrders = allOrders.filter(o => {
-                    const orderDate = new Date(o.order_date);
-                    return orderDate >= weekAgo;
-                }).length;
-                
-                // Count unique doctors with active orders
-                const uniqueDoctors = new Set();
-                allOrders.forEach(order => {
-                    if (order.status !== 'completed' && order.doctor_name) {
-                        const normalizedName = order.doctor_name
-                            .replace(/^(dr\.?|doctor)\s+/i, '')
-                            .trim()
-                            .toLowerCase();
-                        if (normalizedName) {
-                            uniqueDoctors.add(normalizedName);
-                        }
-                    }
-                });
-
-                const statsToSet = {
-                    total: allOrders.length,
-                    inProgress: allOrders.filter(o => o.status === 'in_progress').length,
-                    completed: allOrders.filter(o => o.status === 'completed').length,
-                    urgent: urgent,
-                    overdue: overdue,
-                    recentOrders: recentOrders,
-                    activeDoctors: uniqueDoctors.size,
-                    revisionsInProgress: revisionsInProgress
-                };
-                
-                console.log('Setting work order stats:', statsToSet);
-                setWorkOrderStats(statsToSet);
-            }
-
-            // Calculate bill stats
-            if (billsResponse.data) {
-                const allBills = billsResponse.data;
-                const currentMonth = today.getMonth();
-                const currentYear = today.getFullYear();
-                
-                const monthlyBills = allBills.filter(bill => {
-                    const billDate = new Date(bill.bill_date);
-                    return billDate.getMonth() === currentMonth && billDate.getFullYear() === currentYear;
-                });
-                
-                const monthlyRevenue = monthlyBills
-                    .filter(bill => bill.status === 'paid' && bill.amount)
-                    .reduce((sum, bill) => sum + (parseFloat(bill.amount) || 0), 0);
-
-                setBillStats({
-                    totalBills: allBills.length,
-                    pendingBills: allBills.filter(b => b.status === 'pending').length,
-                    paidBills: allBills.filter(b => b.status === 'paid').length,
-                    monthlyRevenue: monthlyRevenue
-                });
-            }
+            const summary = response.data || {};
+            setWorkOrderStats({
+                total: Number(summary.total || 0),
+                inProgress: Number(summary.inProgress || 0),
+                completed: Number(summary.completed || 0),
+                urgent: Number(summary.urgent || 0),
+                overdue: Number(summary.overdue || 0),
+                recentOrders: Number(summary.recentOrders || 0),
+                activeDoctors: Number(summary.activeDoctors || 0),
+                revisionsInProgress: Number(summary.revisionsInProgress || 0)
+            });
+            setBillStats({
+                totalBills: Number(summary.totalBills || 0),
+                pendingBills: Number(summary.pendingBills || 0),
+                paidBills: Number(summary.paidBills || 0),
+                monthlyRevenue: Number(summary.monthlyRevenue || 0)
+            });
         } catch (error) {
             console.error('Error loading stats:', error);
         }
