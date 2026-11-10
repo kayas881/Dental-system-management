@@ -1,7 +1,7 @@
 {
   "name": "dental-lab-management",
   "version": "1.0.0",
-  "description": "Professional dental lab management system with dual bill printing and work order tracking",
+  "description": "Work-order and billing app for a commercial dental lab",
   "private": true,
   "keywords": [
     "dental",
@@ -11,7 +11,7 @@
     "react",
     "supabase"
   ],
-  "author": "Your Company Name",
+  "author": "Ayan Salmani",
   "dependencies": {
     "@supabase/supabase-js": "^2.50.2",
     "@testing-library/jest-dom": "^5.16.5",
